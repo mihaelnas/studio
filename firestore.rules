@@ -114,6 +114,18 @@ service cloud.firestore {
       allow delete: if isHR() && resource != null;
     }
 
+     /**
+     * @description Rules for sent employee payslips.
+     * @path /employees/{employeeId}/payslips/{payslipId}
+     * @allow An HR admin can manage payslips. Employees can read their own.
+     * @deny An employee cannot access another employee's payslip.
+     * @principle Restricts writes to HR and allows employees read-only access to their own data tree.
+     */
+    match /employees/{employeeId}/payslips/{payslipId} {
+      allow get, list: if isHR() || isOwner(employeeId);
+      allow create, update, delete: if isHR();
+    }
+
     /**
      * @description Rules for AI-generated absence predictions.
      * @path /employees/{employeeId}/absencePredictions/{absencePredictionId}

@@ -116,6 +116,24 @@
         "totalSalary"
       ]
     },
+    "Payslip": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payslip",
+      "type": "object",
+      "description": "Represents an electronic payslip for an employee for a specific pay period.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the payslip." },
+        "employeeId": { "type": "string", "description": "Reference to the Employee." },
+        "payPeriodStart": { "type": "string", "format": "date", "description": "Start date of the pay period." },
+        "payPeriodEnd": { "type": "string", "format": "date", "description": "End date of the pay period." },
+        "grossSalary": { "type": "number", "description": "Total gross salary before deductions." },
+        "deductions": { "type": "number", "description": "Total deductions (e.g., taxes, social security)." },
+        "netSalary": { "type": "number", "description": "Final net salary after deductions." },
+        "sentDate": { "type": "string", "format": "date-time", "description": "The timestamp when the payslip was sent." },
+        "status": { "type": "string", "enum": ["draft", "sent", "failed"], "description": "The status of the payslip." }
+      },
+      "required": ["id", "employeeId", "payPeriodStart", "payPeriodEnd", "grossSalary", "netSalary"]
+    },
     "AbsencePrediction": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AbsencePrediction",
@@ -439,6 +457,20 @@
               "name": "payrollDataId",
               "description": "The unique ID of the payroll data record."
             }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}/payslips/{payslipId}",
+        "definition": {
+          "entityName": "Payslip",
+          "schema": {
+            "$ref": "#/backend/entities/Payslip"
+          },
+          "description": "Stores sent payslips for each employee. Includes denormalized 'employeeId' for authorization independence.",
+          "params": [
+            { "name": "employeeId", "description": "The unique ID of the employee." },
+            { "name": "payslipId", "description": "The unique ID of the payslip." }
           ]
         }
       },
