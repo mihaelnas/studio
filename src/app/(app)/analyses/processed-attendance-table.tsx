@@ -2,6 +2,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { ProcessedAttendance, Employee } from "@/lib/types";
@@ -103,7 +104,7 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
                     </TableCell>
                 </TableRow>
             ) : (
-                data.map((record: ProcessedAttendance) => (
+                data.map((record: any) => (
                     <TableRow key={record.id}>
                     {!employeeId && (
                         <TableCell className="font-medium">
