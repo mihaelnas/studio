@@ -28,11 +28,17 @@ export function ProcessDataButton() {
     const attendanceLogsCollection = collection(firestore, "attendanceLogs");
     const employeesCollection = collection(firestore, "employees");
 
+    const logsPromise = getDocs(attendanceLogsCollection).catch(error => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'attendanceLogs', operation: 'list' }));
+      throw error; // Re-throw to stop Promise.all
+    });
+    const employeesPromise = getDocs(employeesCollection).catch(error => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'employees', operation: 'list' }));
+        throw error;
+    });
+
     try {
-        const [logsSnapshot, employeesSnapshot] = await Promise.all([
-            getDocs(attendanceLogsCollection),
-            getDocs(employeesCollection)
-        ]);
+        const [logsSnapshot, employeesSnapshot] = await Promise.all([logsPromise, employeesPromise]);
 
         const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog));
         const existingEmployees = new Set(employeesSnapshot.docs.map(doc => doc.id));
@@ -47,7 +53,7 @@ export function ProcessDataButton() {
         const employeesToCreate = new Map<string, Partial<Employee>>();
 
         logs.forEach(log => {
-            if (log.personnelId.trim() === 'Personnel ID' || !log.dateTime) return;
+            if (!log.personnelId || log.personnelId.trim() === 'Personnel ID') return;
             
             const trimmedDateTime = log.dateTime?.trim();
             const trimmedPersonnelId = log.personnelId?.trim();
@@ -153,7 +159,13 @@ export function ProcessDataButton() {
             processedCount++;
         }
 
-        await batch.commit();
+        await batch.commit().catch(error => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: '/processedAttendance (batch write)',
+                operation: 'write',
+            }));
+            // We don't re-throw here because we want to show our own toast.
+        });
 
         let toastMessage = `${processedCount} enregistrements de présence ont été traités.`;
         if (employeesToCreate.size > 0) {
@@ -167,22 +179,10 @@ export function ProcessDataButton() {
 
     } catch (error: any) {
         console.error("Processing error:", error);
-        
-        let path = "collections"; // Default path
-        if (error.message.includes("attendanceLogs")) path = "attendanceLogs";
-        if (error.message.includes("employees")) path = "employees";
-        if (error.message.includes("processedAttendance")) path = "/processedAttendance (batch write)";
-
-
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: path,
-            operation: 'write',
-        }));
-        
         toast({
             variant: "destructive",
             title: "Échec du traitement",
-            description: "Une erreur de permission est survenue. Vérifiez la console pour plus de détails.",
+            description: "Une erreur de permission est survenue lors de la lecture des données. Vérifiez la console pour plus de détails.",
         });
     } finally {
         setIsProcessing(false);
