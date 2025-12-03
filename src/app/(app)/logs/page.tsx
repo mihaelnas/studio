@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { collection, query, orderBy } from 'firebase/firestore';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useMemoFirebase } from '@/firebase';
 import type { AttendanceLog } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -22,7 +22,7 @@ function LogRowSkeleton() {
 export default function LogsPage() {
   const { firestore } = useFirebase();
 
-  const attendanceLogsQuery = useMemo(() => {
+  const attendanceLogsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     // Order by 'createdAt' timestamp descending to show newest logs first
     return query(collection(firestore, "attendanceLogs"), orderBy("createdAt", "desc"));
@@ -93,5 +93,3 @@ export default function LogsPage() {
     </Card>
   );
 }
-
-    
