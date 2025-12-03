@@ -3,11 +3,13 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import type { AttendanceLog } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
+import { AlertTriangle } from 'lucide-react';
 
 function LogRowSkeleton() {
   return (
@@ -24,11 +26,10 @@ export default function LogsPage() {
 
   const attendanceLogsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    // Order by 'createdAt' timestamp descending to show newest logs first
     return query(collection(firestore, "attendanceLogs"), orderBy("createdAt", "desc"));
   }, [firestore]);
 
-  const { data: attendanceLogs, isLoading } = useCollection<AttendanceLog>(attendanceLogsQuery);
+  const { data: attendanceLogs, isLoading, error } = useCollection<AttendanceLog>(attendanceLogsQuery);
 
   return (
     <Card>
@@ -58,11 +59,21 @@ export default function LogsPage() {
                 </TableHeader>
                 <TableBody>
                     {isLoading ? (
-                      <>
-                        <LogRowSkeleton />
-                        <LogRowSkeleton />
-                        <LogRowSkeleton />
-                      </>
+                      Array.from({ length: 5 }).map((_, i) => <LogRowSkeleton key={i} />)
+                    ) : error ? (
+                      <TableRow>
+                        <TableCell colSpan={11}>
+                          <div className="flex justify-center py-10">
+                            <Alert variant="destructive" className="w-auto">
+                              <AlertTriangle className="h-4 w-4" />
+                              <AlertTitle>Erreur de Permission</AlertTitle>
+                              <AlertDescription>
+                                Vous n'avez pas la permission de consulter ces données.
+                              </AlertDescription>
+                            </Alert>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ) : attendanceLogs && attendanceLogs.length > 0 ? (
                         attendanceLogs.map((log) => (
                             <TableRow key={log.id}>

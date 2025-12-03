@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { UploadCloud, FileText, X } from "lucide-react";
+import { UploadCloud, FileText, X, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -96,7 +96,7 @@ export function FileUploader() {
     };
     reader.onerror = () => {
         setStatus("error");
-        setErrorMessage("Impossible de lire le fichier.");
+        setErrorMessage("Impossible de lire le fichier. Veuillez vérifier le fichier et réessayer.");
     }
     reader.readAsText(file);
   };
@@ -156,9 +156,9 @@ export function FileUploader() {
       )}
 
       {status === "success" && (
-        <Alert variant="default" className="bg-green-50 border-green-200">
-          <AlertTitle className="text-green-800">Importation Réussie !</AlertTitle>
-          <AlertDescription className="text-green-700">
+        <Alert variant="default" className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+          <AlertTitle className="text-green-800 dark:text-green-300">Importation Réussie !</AlertTitle>
+          <AlertDescription className="text-green-700 dark:text-green-400">
             {successMessage}
           </AlertDescription>
         </Alert>
@@ -166,6 +166,7 @@ export function FileUploader() {
       
       {status === "error" && (
         <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Échec de l'Importation</AlertTitle>
           <AlertDescription>
             <p>{errorMessage}</p>
@@ -175,5 +176,3 @@ export function FileUploader() {
     </div>
   );
 }
-
-    

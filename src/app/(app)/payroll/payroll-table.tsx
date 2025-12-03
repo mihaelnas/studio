@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { employees, processedAttendanceData } from "@/lib/data";
+import { employees, processedAttendanceData as staticAttendanceData } from "@/lib/data";
 import type { Employee, ProcessedAttendance } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -22,7 +22,6 @@ interface PayrollEntry {
 const calculatePayroll = (employees: Employee[], attendance: ProcessedAttendance[]): PayrollEntry[] => {
   const payrollMap = new Map<string, { totalHours: number; overtimeHours: number }>();
 
-  // Aggregate hours from attendance data for the current month
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
@@ -37,8 +36,7 @@ const calculatePayroll = (employees: Employee[], attendance: ProcessedAttendance
   });
 
   return employees.map(employee => {
-    // Assign a fictional hourly rate for calculation
-    const hourlyRate = employee.department === 'Chirurgie' || employee.department === 'Cardiologie' ? 35 : 25;
+    const hourlyRate = employee.department === 'Chirurgie' || employee.department === 'Cardiologie' ? 35000 : 25000; // Fictional MGA rate
     const data = payrollMap.get(employee.id) || { totalHours: 0, overtimeHours: 0 };
     const grossSalary = (data.totalHours * hourlyRate) + (data.overtimeHours * hourlyRate * 1.5);
 
@@ -56,17 +54,26 @@ const calculatePayroll = (employees: Employee[], attendance: ProcessedAttendance
 };
 
 const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MGA' }).format(value);
+    return new Intl.NumberFormat('fr-MG', { style: 'currency', currency: 'MGA', minimumFractionDigits: 0 }).format(value);
 };
 
 export function PayrollTable() {
-  const [payrollData, setPayrollData] = useState<PayrollEntry[]>([]);
   const [isClient, setIsClient] = useState(false);
+  
+  // For now, we will continue using static data, but this is structured to easily
+  // switch to live data from Firestore using a hook like useCollection.
+  // const { data: liveAttendance, isLoading: isAttendanceLoading } = useCollection<ProcessedAttendance>(...);
+  const attendanceData = staticAttendanceData;
 
   useEffect(() => {
     setIsClient(true);
-    setPayrollData(calculatePayroll(employees, processedAttendanceData));
   }, []);
+
+  const payrollData = useMemo(() => {
+      // The calculation is memoized. It will only re-run if employees or attendanceData change.
+      return calculatePayroll(employees, attendanceData);
+  }, [attendanceData]);
+
 
   return (
     <div className="rounded-md border">
@@ -81,7 +88,25 @@ export function PayrollTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {isClient ? (
+          {!isClient ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-9 w-9 rounded-full" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+              </TableRow>
+            ))
+          ) : (
             payrollData.map((entry) => (
               <TableRow key={entry.employeeId}>
                 <TableCell>
@@ -100,24 +125,6 @@ export function PayrollTable() {
                 <TableCell className="text-right">{entry.totalHours.toFixed(2)} h</TableCell>
                 <TableCell className="text-right">{entry.overtimeHours.toFixed(2)} h</TableCell>
                 <TableCell className="text-right font-semibold">{formatCurrency(entry.grossSalary)}</TableCell>
-              </TableRow>
-            ))
-          ) : (
-            Array.from({ length: 5 }).map((_, i) => (
-              <TableRow key={i}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-9 w-9 rounded-full" />
-                    <div className="space-y-1">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-24" />
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
               </TableRow>
             ))
           )}
