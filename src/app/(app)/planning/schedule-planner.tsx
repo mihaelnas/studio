@@ -52,8 +52,8 @@ export function SchedulePlanner() {
   const { firestore, user } = useFirebase();
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const weekStart = startOfWeek(currentDate, { weekStartsOn, locale: fr });
-  const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
+  const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn, locale: fr }), [currentDate]);
+  const weekDays = useMemo(() => Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)), [weekStart]);
 
   const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
   const shiftsQuery = useMemoFirebase(() => {
