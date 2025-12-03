@@ -72,8 +72,8 @@ service cloud.firestore {
     }
     
     match /manualCorrections/{manualCorrectionId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isHR();
+      allow get, list, create: if isSignedIn();
+      allow update, delete: if isHR();
     }
     
     match /schedules/{scheduleId} {
@@ -197,9 +197,7 @@ service cloud.firestore {
      */
     match /processedAttendance/{processedAttendanceId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isHR();
+      allow create, update, delete: if isSignedIn();
     }
   }
 }
-
-    
