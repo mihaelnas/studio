@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader, Cog } from "lucide-react";
 import { useFirebase } from "@/firebase";
 import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
-import type { AttendanceLog, ProcessedAttendance } from "@/lib/types";
+import type { AttendanceLog, ProcessedAttendance, Employee } from "@/lib/types";
 import { format, parse } from 'date-fns';
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -26,10 +26,16 @@ export function ProcessDataButton() {
     toast({ title: "Début du traitement...", description: "Veuillez patienter." });
 
     const attendanceLogsCollection = collection(firestore, "attendanceLogs");
+    const employeesCollection = collection(firestore, "employees");
 
-    getDocs(attendanceLogsCollection)
-      .then(async (logsSnapshot) => {
+    try {
+        const [logsSnapshot, employeesSnapshot] = await Promise.all([
+            getDocs(attendanceLogsCollection),
+            getDocs(employeesCollection)
+        ]);
+
         const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog));
+        const existingEmployees = new Set(employeesSnapshot.docs.map(doc => doc.id));
 
         if (logs.length === 0) {
             toast({ variant: "default", title: "Information", description: "Aucun log brut à traiter." });
@@ -38,6 +44,7 @@ export function ProcessDataButton() {
         }
 
         const groupedByEmployeeAndDay: { [key: string]: AttendanceLog[] } = {};
+        const employeesToCreate = new Map<string, Partial<Employee>>();
 
         logs.forEach(log => {
             if (log.personnelId.trim() === 'Personnel ID' || !log.dateTime) return;
@@ -46,6 +53,19 @@ export function ProcessDataButton() {
             const trimmedPersonnelId = log.personnelId?.trim();
 
             if (!trimmedDateTime || !trimmedPersonnelId) return;
+
+            // Add to employees to create if not existing
+            if (!existingEmployees.has(trimmedPersonnelId) && !employeesToCreate.has(trimmedPersonnelId)) {
+                employeesToCreate.set(trimmedPersonnelId, {
+                    id: trimmedPersonnelId,
+                    name: `${log.firstName?.trim() || ''} ${log.lastName?.trim() || ''}`.trim(),
+                    email: `${(log.firstName?.trim() || '').toLowerCase()}.${(log.lastName?.trim() || 'user').toLowerCase()}@miaraka.mg`, // Dummy email
+                    department: 'Non assigné', // Default department
+                    avatarUrl: `https://picsum.photos/seed/${trimmedPersonnelId}/100/100`,
+                });
+            }
+
+
             const logDate = parse(trimmedDateTime, "yyyy-MM-dd HH:mm:ss", new Date());
 
             if (isNaN(logDate.getTime())) {
@@ -63,6 +83,13 @@ export function ProcessDataButton() {
 
         const batch = writeBatch(firestore);
         let processedCount = 0;
+
+        // Add new employees to the batch
+        employeesToCreate.forEach((employeeData, employeeId) => {
+            const employeeDocRef = doc(firestore, "employees", employeeId);
+            batch.set(employeeDocRef, employeeData);
+        });
+
 
         for (const key in groupedByEmployeeAndDay) {
             const dayLogs = groupedByEmployeeAndDay[key].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
@@ -126,38 +153,40 @@ export function ProcessDataButton() {
             processedCount++;
         }
 
-        await batch.commit().catch(error => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: '/processedAttendance (batch write)',
-                operation: 'write',
-            }));
-            throw error; // Re-throw to be caught by the final catch block
-        });
+        await batch.commit();
+
+        let toastMessage = `${processedCount} enregistrements de présence ont été traités.`;
+        if (employeesToCreate.size > 0) {
+            toastMessage += ` ${employeesToCreate.size} nouveaux employés ont été créés.`
+        }
 
         toast({
             title: "Traitement Terminé",
-            description: `${processedCount} enregistrements de présence quotidiens ont été créés ou mis à jour.`,
+            description: toastMessage,
         });
 
-      })
-      .catch(error => {
-        // This will catch the re-thrown error from batch.commit, or the initial getDocs error
-        if (error.name !== 'FirebaseError') {
-             errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: 'attendanceLogs',
-                operation: 'list',
-            }));
-        }
+    } catch (error: any) {
+        console.error("Processing error:", error);
+        
+        let path = "collections"; // Default path
+        if (error.message.includes("attendanceLogs")) path = "attendanceLogs";
+        if (error.message.includes("employees")) path = "employees";
+        if (error.message.includes("processedAttendance")) path = "/processedAttendance (batch write)";
+
+
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: path,
+            operation: 'write',
+        }));
         
         toast({
             variant: "destructive",
             title: "Échec du traitement",
             description: "Une erreur de permission est survenue. Vérifiez la console pour plus de détails.",
         });
-      })
-      .finally(() => {
+    } finally {
         setIsProcessing(false);
-      });
+    }
   };
 
 
