@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
 import { AppHeader } from "@/components/layout/header";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
-import { Stethoscope, LogOut } from "lucide-react";
+import { Stethoscope, LogOut, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FirebaseClientProvider, useFirebase, initiateAnonymousSignIn } from "@/firebase";
 
@@ -19,6 +19,15 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       initiateAnonymousSignIn(auth);
     }
   }, [auth, user, isUserLoading]);
+
+  // Display a loading state for the entire page until Firebase auth is initialized.
+  if (isUserLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   
   return (
     <SidebarProvider>
