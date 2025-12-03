@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -57,13 +58,13 @@ export function LatenessRiskTable() {
                 <React.Fragment key={employee.id}>
                     <TableRow>
                         <TableCell>
-                        <div className="flex items-center gap-3">
+                        <Link href={`/employees/${employee.id}`} className="flex items-center gap-3 hover:underline">
                             <Avatar className="h-9 w-9">
                             <AvatarImage src={employee.avatarUrl} alt={employee.name} data-ai-hint="person portrait" />
                             <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                             </Avatar>
                             <span className="font-medium">{employee.name}</span>
-                        </div>
+                        </Link>
                         </TableCell>
                         <TableCell>{employee.department}</TableCell>
                         <TableCell>

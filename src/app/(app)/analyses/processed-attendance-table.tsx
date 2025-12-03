@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { processedAttendanceData } from "@/lib/data";
@@ -16,7 +17,9 @@ const renderValue = (value: number) => {
     return <span className="text-green-600">0 min</span>;
 }
 
-export function ProcessedAttendanceTable() {
+export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }) {
+  const data = employeeId ? processedAttendanceData.filter(d => d.employee_id === employeeId) : processedAttendanceData;
+  
   return (
     <div className="rounded-md border">
       <Table>
@@ -35,9 +38,13 @@ export function ProcessedAttendanceTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {processedAttendanceData.map((record: ProcessedAttendance) => (
+          {data.map((record: ProcessedAttendance) => (
             <TableRow key={record.id}>
-              <TableCell className="font-medium">{record.employee_name || record.employee_id}</TableCell>
+              <TableCell className="font-medium">
+                <Link href={`/employees/${record.employee_id}`} className="hover:underline">
+                  {record.employee_name || record.employee_id}
+                </Link>
+              </TableCell>
               <TableCell>{record.date}</TableCell>
               <TimeCell time={record.morning_in} />
               <TimeCell time={record.morning_out} />

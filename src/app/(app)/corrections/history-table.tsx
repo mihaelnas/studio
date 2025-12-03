@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { corrections } from "@/lib/data";
+import { corrections, employees } from "@/lib/data";
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Correction } from '@/lib/types';
@@ -12,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface FormattedCorrection extends Omit<Correction, 'timestamp' | 'date'> {
   timestamp: string;
   date: string;
+  employeeId?: string;
 }
 
 export function HistoryTable() {
@@ -21,11 +23,14 @@ export function HistoryTable() {
   useEffect(() => {
     setIsClient(true);
     setFormattedCorrections(
-      corrections.map(c => ({
+      corrections.map(c => {
+        const employee = employees.find(e => e.name === c.employeeName);
+        return {
         ...c,
+        employeeId: employee?.id,
         timestamp: `${format(c.timestamp, "PPP", { locale: fr })} à ${format(c.timestamp, "p", { locale: fr })}`,
         date: format(c.date, "PPP", { locale: fr }),
-      }))
+      }})
     );
   }, []);
 
@@ -53,7 +58,13 @@ export function HistoryTable() {
                     <span className="font-medium">{correction.adminName}</span>
                   </div>
                 </TableCell>
-                <TableCell>{correction.employeeName}</TableCell>
+                <TableCell>
+                    {correction.employeeId ? (
+                        <Link href={`/employees/${correction.employeeId}`} className="hover:underline">{correction.employeeName}</Link>
+                    ) : (
+                        correction.employeeName
+                    )}
+                </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span>{correction.timestamp.split(' à ')[0]}</span>

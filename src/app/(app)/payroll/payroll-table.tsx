@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { employees, processedAttendanceData } from "@/lib/data";
@@ -84,7 +85,7 @@ export function PayrollTable() {
             payrollData.map((entry) => (
               <TableRow key={entry.employeeId}>
                 <TableCell>
-                  <div className="flex items-center gap-3">
+                  <Link href={`/employees/${entry.employeeId}`} className="flex items-center gap-3 hover:underline">
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={entry.avatarUrl} alt={entry.name} data-ai-hint="person portrait" />
                       <AvatarFallback>{entry.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
@@ -93,7 +94,7 @@ export function PayrollTable() {
                       <div className="font-medium">{entry.name}</div>
                       <div className="text-xs text-muted-foreground">{entry.department}</div>
                     </div>
-                  </div>
+                  </Link>
                 </TableCell>
                 <TableCell className="text-right">{formatCurrency(entry.hourlyRate)}</TableCell>
                 <TableCell className="text-right">{entry.totalHours.toFixed(2)} h</TableCell>
