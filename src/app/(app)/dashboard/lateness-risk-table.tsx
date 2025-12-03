@@ -131,7 +131,7 @@ export function LatenessRiskTable() {
                             <TableCell>
                             <Link href={`/employees/${employee.id}`} className="flex items-center gap-3 hover:underline">
                                 <Avatar className="h-9 w-9">
-                                <AvatarImage src={employee.avatarUrl} alt={employee.name} />
+                                
                                 <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                 </Avatar>
                                 <span className="font-medium">{employee.name}</span>
