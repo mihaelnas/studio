@@ -25,3 +25,18 @@ export type Shift = {
   date: Date;
   shiftType: ShiftType;
 };
+
+export type AttendanceLog = {
+    id: string;
+    dateTime: string;
+    personnelId: string;
+    firstName: string;
+    lastName: string;
+    cardNumber: string;
+    deviceName: string;
+    eventPoint: string;
+    verifyType: string;
+    inOutStatus: 'Check-In' | 'Check-Out';
+    eventDescription: string;
+    remarks: string;
+}

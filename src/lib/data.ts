@@ -1,4 +1,4 @@
-import type { Employee, Correction, Shift } from './types';
+import type { Employee, Correction, Shift, AttendanceLog } from './types';
 
 export const employees: Employee[] = [
   {
@@ -89,3 +89,62 @@ export const shifts: Shift[] = [
   { id: 's5', employeeId: '5', date: new Date(), shiftType: 'Matin' },
   { id: 's6', employeeId: '6', date: new Date(), shiftType: 'Journée Complète' },
 ];
+
+export const attendanceLogs: AttendanceLog[] = [
+    {
+        id: 'log1',
+        dateTime: '2025-07-31 17:40:10',
+        personnelId: '24',
+        firstName: 'Tome',
+        lastName: '',
+        cardNumber: '',
+        deviceName: 'MIARAKA',
+        eventPoint: 'MIARAKA-1',
+        verifyType: 'Only Face',
+        inOutStatus: 'Check-In',
+        eventDescription: 'Normal Punch Open',
+        remarks: '.',
+    },
+    {
+        id: 'log2',
+        dateTime: '2025-07-31 17:35:05',
+        personnelId: '5',
+        firstName: 'Maya',
+        lastName: 'Singh',
+        cardNumber: 'C005',
+        deviceName: 'MIARAKA',
+        eventPoint: 'URGENCES-1',
+        verifyType: 'Face+Card',
+        inOutStatus: 'Check-In',
+        eventDescription: 'Normal Punch Open',
+        remarks: '.',
+    },
+    {
+        id: 'log3',
+        dateTime: '2025-07-31 12:05:21',
+        personnelId: '2',
+        firstName: 'Kai',
+        lastName: 'Tanaka',
+        cardNumber: 'C002',
+        deviceName: 'MIARAKA',
+        eventPoint: 'PEDIATRIE-1',
+        verifyType: 'Only Face',
+        inOutStatus: 'Check-Out',
+        eventDescription: 'Normal Punch Open',
+        remarks: 'Départ déjeuner',
+    },
+    {
+        id: 'log4',
+        dateTime: '2025-07-31 08:05:15',
+        personnelId: '1',
+        firstName: 'Elara',
+        lastName: 'Vance',
+        cardNumber: 'C001',
+        deviceName: 'MIARAKA',
+        eventPoint: 'CARDIO-1',
+        verifyType: 'Only Face',
+        inOutStatus: 'Check-In',
+        eventDescription: 'Normal Punch Open',
+        remarks: '5 min en retard',
+    }
+]
