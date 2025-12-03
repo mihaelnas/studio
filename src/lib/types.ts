@@ -3,6 +3,7 @@ import type { Timestamp } from 'firebase/firestore';
 export type Employee = {
   id: string;
   name: string;
+  email: string;
   avatarUrl: string;
   department: string;
   latenessRisk: 'Élevé' | 'Moyen' | 'Faible';

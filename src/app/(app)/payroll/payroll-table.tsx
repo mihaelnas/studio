@@ -13,6 +13,7 @@ interface PayrollEntry {
   name: string;
   avatarUrl: string;
   department: string;
+  email: string;
   hourlyRate: number;
   totalHours: number;
   overtimeHours: number;
@@ -45,6 +46,7 @@ const calculatePayroll = (employees: Employee[], attendance: ProcessedAttendance
       name: employee.name,
       avatarUrl: employee.avatarUrl,
       department: employee.department,
+      email: employee.email,
       hourlyRate,
       totalHours: data.totalHours,
       overtimeHours: data.overtimeHours,
@@ -81,6 +83,7 @@ export function PayrollTable() {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[280px]">Employé</TableHead>
+            <TableHead>Email</TableHead>
             <TableHead className="text-right">Taux Horaire</TableHead>
             <TableHead className="text-right">Heures Travaillées</TableHead>
             <TableHead className="text-right">Heures Supp.</TableHead>
@@ -104,6 +107,7 @@ export function PayrollTable() {
                 <TableCell><Skeleton className="h-4 w-full" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-full" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
               </TableRow>
             ))
           ) : (
@@ -121,6 +125,7 @@ export function PayrollTable() {
                     </div>
                   </Link>
                 </TableCell>
+                <TableCell className="text-muted-foreground">{entry.email}</TableCell>
                 <TableCell className="text-right">{formatCurrency(entry.hourlyRate)}</TableCell>
                 <TableCell className="text-right">{entry.totalHours.toFixed(2)} h</TableCell>
                 <TableCell className="text-right">{entry.overtimeHours.toFixed(2)} h</TableCell>

@@ -7,6 +7,7 @@ export const employees: Employee[] = [
   {
     id: '1',
     name: 'Dr. Elara Vance',
+    email: 'elara.vance@miaraka.mg',
     avatarUrl: findImage('avatar1'),
     department: 'Cardiologie',
     latenessRisk: 'Élevé',
@@ -15,6 +16,7 @@ export const employees: Employee[] = [
   {
     id: '2',
     name: 'Infirmier Kai Tanaka',
+    email: 'kai.tanaka@miaraka.mg',
     avatarUrl: findImage('avatar2'),
     department: 'Pédiatrie',
     latenessRisk: 'Faible',
@@ -23,6 +25,7 @@ export const employees: Employee[] = [
   {
     id: '3',
     name: 'Admin Zara Ahmed',
+    email: 'zara.ahmed@miaraka.mg',
     avatarUrl: findImage('avatar3'),
     department: 'Administration',
     latenessRisk: 'Moyen',
@@ -31,6 +34,7 @@ export const employees: Employee[] = [
   {
     id: '4',
     name: 'Dr. Leo Martinez',
+    email: 'leo.martinez@miaraka.mg',
     avatarUrl: findImage('avatar4'),
     department: 'Orthopédie',
     latenessRisk: 'Faible',
@@ -39,6 +43,7 @@ export const employees: Employee[] = [
   {
     id: '5',
     name: 'Infirmière Maya Singh',
+    email: 'maya.singh@miaraka.mg',
     avatarUrl: findImage('avatar5'),
     department: 'Urgences',
     latenessRisk: 'Élevé',
@@ -47,6 +52,7 @@ export const employees: Employee[] = [
   {
     id: '6',
     name: 'Chirurgien Ben Carter',
+    email: 'ben.carter@miaraka.mg',
     avatarUrl: findImage('avatar6'),
     department: 'Chirurgie',
     latenessRisk: 'Moyen',
