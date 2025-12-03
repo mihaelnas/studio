@@ -1,9 +1,10 @@
+
 "use client";
 
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { processedAttendanceData } from "@/lib/data";
+import { processedAttendanceData, employees } from "@/lib/data";
 import type { ProcessedAttendance } from "@/lib/types";
 
 const TimeCell = ({ time }: { time: string | null }) => (
@@ -18,14 +19,21 @@ const renderValue = (value: number) => {
 }
 
 export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }) {
-  const data = employeeId ? processedAttendanceData.filter(d => d.employee_id === employeeId) : processedAttendanceData;
+  const data = (employeeId ? processedAttendanceData.filter(d => d.employee_id === employeeId) : processedAttendanceData)
+    .map(record => {
+        const employee = employees.find(e => e.id === record.employee_id);
+        return {
+            ...record,
+            employee_name: employee?.name || record.employee_id
+        }
+    });
   
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Employé</TableHead>
+            {!employeeId && <TableHead>Employé</TableHead>}
             <TableHead>Date</TableHead>
             <TableHead className="text-center">Arrivée Matin</TableHead>
             <TableHead className="text-center">Départ Matin</TableHead>
@@ -40,11 +48,13 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
         <TableBody>
           {data.map((record: ProcessedAttendance) => (
             <TableRow key={record.id}>
-              <TableCell className="font-medium">
-                <Link href={`/employees/${record.employee_id}`} className="hover:underline">
-                  {record.employee_name || record.employee_id}
-                </Link>
-              </TableCell>
+              {!employeeId && (
+                <TableCell className="font-medium">
+                    <Link href={`/employees/${record.employee_id}`} className="hover:underline">
+                    {record.employee_name}
+                    </Link>
+                </TableCell>
+              )}
               <TableCell>{record.date}</TableCell>
               <TimeCell time={record.morning_in} />
               <TimeCell time={record.morning_out} />

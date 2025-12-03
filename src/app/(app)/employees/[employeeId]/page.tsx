@@ -1,3 +1,4 @@
+
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,7 +47,7 @@ export default function EmployeeProfilePage({ params }: { params: { employeeId: 
         <CardHeader>
           <CardTitle>Historique des Présences</CardTitle>
           <CardDescription>
-            Données de présence quotidiennes nettoyées et agrégées pour cet employé.
+            Données de présence quotidiennes nettoyées et agrégées pour cet employé. Ce sont ces données qui sont utilisées pour les prédictions de l'IA.
           </CardDescription>
         </CardHeader>
         <CardContent>
