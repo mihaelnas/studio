@@ -73,38 +73,52 @@ export function LatenessTable({ employees }: { employees: Employee[] }) {
                 const riskOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
                 return riskOrder[a.latenessRisk] - riskOrder[b.latenessRisk];
               }).map((employee) => (
-                <Tooltip key={employee.id} delayDuration={100}>
-                  <TableRow onMouseEnter={() => handleHover(employee.id)} className="cursor-help">
+                  <TableRow key={employee.id} onMouseEnter={() => handleHover(employee.id)} className="cursor-help">
                     <TableCell>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={employee.avatarUrl} alt={employee.name} data-ai-hint="person portrait" />
-                            <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{employee.name}</span>
-                        </div>
-                      </TooltipTrigger>
+                        <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                                <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={employee.avatarUrl} alt={employee.name} data-ai-hint="person portrait" />
+                                    <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{employee.name}</span>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p className="max-w-xs">
+                                {loading[employee.id] ? "Loading explanation..." : explanation[employee.id] || "Hover to see AI explanation"}
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
                     </TableCell>
                     <TableCell>
-                      <TooltipTrigger asChild>
-                        <span>{employee.department}</span>
-                      </TooltipTrigger>
+                        <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                                <span>{employee.department}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p className="max-w-xs">
+                                {loading[employee.id] ? "Loading explanation..." : explanation[employee.id] || "Hover to see AI explanation"}
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
                     </TableCell>
                     <TableCell className="text-right">
-                      <TooltipTrigger asChild>
-                        <Badge variant={getRiskVariant(employee.latenessRisk)} className={getBadgeClass(employee.latenessRisk)}>
-                          {employee.latenessRisk}
-                        </Badge>
-                      </TooltipTrigger>
+                        <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                                <Badge variant={getRiskVariant(employee.latenessRisk)} className={getBadgeClass(employee.latenessRisk)}>
+                                {employee.latenessRisk}
+                                </Badge>
+                            </TooltipTrigger>
+                             <TooltipContent>
+                                <p className="max-w-xs">
+                                {loading[employee.id] ? "Loading explanation..." : explanation[employee.id] || "Hover to see AI explanation"}
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
                     </TableCell>
                   </TableRow>
-                  <TooltipContent>
-                      <p className="max-w-xs">
-                      {loading[employee.id] ? "Loading explanation..." : explanation[employee.id] || "Hover to see AI explanation"}
-                      </p>
-                  </TooltipContent>
-                </Tooltip>
             ))}
           </TableBody>
         </Table>
