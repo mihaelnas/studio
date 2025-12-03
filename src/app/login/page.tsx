@@ -53,11 +53,16 @@ export default function LoginPage() {
       });
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Login Error: ", error);
+      let description = "Une erreur inconnue est survenue.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        description = "Adresse e-mail ou mot de passe incorrect. Veuillez vérifier vos identifiants.";
+      } else {
+        description = error.message;
+      }
       toast({
         variant: "destructive",
         title: "Échec de la connexion",
-        description: error.message || "Veuillez vérifier vos identifiants.",
+        description: description,
       });
     } finally {
         setIsLoading(false);
