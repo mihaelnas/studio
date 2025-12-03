@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader, Cog } from "lucide-react";
 import { useFirebase } from "@/firebase";
-import { collection, getDocs, writeBatch } from "firebase/firestore";
+import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
 import type { AttendanceLog, ProcessedAttendance } from "@/lib/types";
 import { format, parse } from 'date-fns';
 
@@ -36,10 +36,19 @@ export function ProcessDataButton() {
         const groupedByEmployeeAndDay: { [key: string]: AttendanceLog[] } = {};
 
         logs.forEach(log => {
-            if (!log.dateTime || !log.personnelId) return;
-            const logDate = parse(log.dateTime, "yyyy-MM-dd HH:mm:ss", new Date());
+            // Ignore header row from logs
+            if (log.personnelId.trim() === 'Personnel ID' || !log.dateTime) return;
+            
+            if (!log.dateTime.trim() || !log.personnelId.trim()) return;
+            const logDate = parse(log.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date());
+
+            if (isNaN(logDate.getTime())) {
+                console.warn(`Invalid date format for log entry: ${log.id}, dateTime: ${log.dateTime}`);
+                return; // Skip this invalid log
+            }
+
             const dayKey = format(logDate, 'yyyy-MM-dd');
-            const key = `${log.personnelId}-${dayKey}`;
+            const key = `${log.personnelId.trim()}-${dayKey}`;
             if (!groupedByEmployeeAndDay[key]) {
                 groupedByEmployeeAndDay[key] = [];
             }
@@ -52,7 +61,7 @@ export function ProcessDataButton() {
         for (const key in groupedByEmployeeAndDay) {
             const dayLogs = groupedByEmployeeAndDay[key].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
             const employeeId = dayLogs[0].personnelId;
-            const date = format(new Date(dayLogs[0].dateTime), 'yyyy-MM-dd');
+            const date = format(new Date(dayLogs[0].dateTime.trim()), 'yyyy-MM-dd');
 
             const checkIns = dayLogs.filter(l => l.inOutStatus.trim() === 'Check-In');
             const checkOuts = dayLogs.filter(l => l.inOutStatus.trim() === 'Check-Out');
@@ -62,17 +71,17 @@ export function ProcessDataButton() {
             let afternoon_in: Date | null = null;
             let afternoon_out: Date | null = null;
             
-            if (checkIns.length > 0) morning_in = new Date(checkIns[0].dateTime);
-            if (checkOuts.length > 0) afternoon_out = new Date(checkOuts[checkOuts.length - 1].dateTime);
+            if (checkIns.length > 0) morning_in = new Date(checkIns[0].dateTime.trim());
+            if (checkOuts.length > 0) afternoon_out = new Date(checkOuts[checkOuts.length - 1].dateTime.trim());
             
             const middayCutoff = new Date(date);
             middayCutoff.setHours(12, 30, 0, 0);
 
-            const morningCheckOuts = checkOuts.filter(l => new Date(l.dateTime) < middayCutoff);
-            if(morningCheckOuts.length > 0) morning_out = new Date(morningCheckOuts[morningCheckOuts.length -1].dateTime);
+            const morningCheckOuts = checkOuts.filter(l => new Date(l.dateTime.trim()) < middayCutoff);
+            if(morningCheckOuts.length > 0) morning_out = new Date(morningCheckOuts[morningCheckOuts.length -1].dateTime.trim());
 
-            const afternoonCheckIns = checkIns.filter(l => new Date(l.dateTime) > middayCutoff);
-            if(afternoonCheckIns.length > 0) afternoon_in = new Date(afternoonCheckIns[0].dateTime);
+            const afternoonCheckIns = checkIns.filter(l => new Date(l.dateTime.trim()) > middayCutoff);
+            if(afternoonCheckIns.length > 0) afternoon_in = new Date(afternoonCheckIns[0].dateTime.trim());
             
             // Refine logic: if only two punches, it's likely morning in and afternoon out
             if(dayLogs.length === 2 && checkIns.length === 1 && checkOuts.length === 1) {
