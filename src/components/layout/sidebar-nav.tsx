@@ -3,15 +3,16 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { LayoutDashboard, Wrench, Upload, FileSpreadsheet, CalendarDays, History } from "lucide-react";
+import { LayoutDashboard, Wrench, Upload, FileSpreadsheet, CalendarDays, History, BarChart } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Tableau de Bord", icon: LayoutDashboard },
-  { href: "/corrections", label: "Corrections", icon: Wrench },
-  { href: "/import", label: "Importer Logs", icon: Upload },
-  { href: "/payroll", label: "Paie", icon: FileSpreadsheet },
   { href: "/planning", label: "Planning", icon: CalendarDays },
-  { href: "/logs", label: "Logs", icon: History },
+  { href: "/corrections", label: "Corrections", icon: Wrench },
+  { href: "/payroll", label: "Paie", icon: FileSpreadsheet },
+  { href: "/import", label: "Importer Logs", icon: Upload },
+  { href: "/logs", label: "Logs Bruts", icon: History },
+  { href: "/analyses", label: "Analyses", icon: BarChart },
 ];
 
 export function SidebarNav() {

@@ -1,4 +1,4 @@
-import type { Employee, Correction, Shift, AttendanceLog } from './types';
+import type { Employee, Correction, Shift, AttendanceLog, ProcessedAttendance } from './types';
 
 export const employees: Employee[] = [
   {
@@ -104,6 +104,7 @@ export const attendanceLogs: AttendanceLog[] = [
         inOutStatus: 'Check-In',
         eventDescription: 'Normal Punch Open',
         remarks: '.',
+        createdAt: new Date() as any,
     },
     {
         id: 'log2',
@@ -118,6 +119,7 @@ export const attendanceLogs: AttendanceLog[] = [
         inOutStatus: 'Check-In',
         eventDescription: 'Normal Punch Open',
         remarks: '.',
+        createdAt: new Date() as any,
     },
     {
         id: 'log3',
@@ -132,6 +134,7 @@ export const attendanceLogs: AttendanceLog[] = [
         inOutStatus: 'Check-Out',
         eventDescription: 'Normal Punch Open',
         remarks: 'Départ déjeuner',
+        createdAt: new Date() as any,
     },
     {
         id: 'log4',
@@ -146,5 +149,69 @@ export const attendanceLogs: AttendanceLog[] = [
         inOutStatus: 'Check-In',
         eventDescription: 'Normal Punch Open',
         remarks: '5 min en retard',
+        createdAt: new Date() as any,
     }
+]
+
+export const processedAttendanceData: ProcessedAttendance[] = [
+    {
+        id: 'pa1',
+        employee_id: '1',
+        employee_name: 'Dr. Elara Vance',
+        date: '2023-07-31',
+        morning_in: '08:05',
+        morning_out: '12:02',
+        afternoon_in: '14:00',
+        afternoon_out: '18:03',
+        total_worked_hours: 8.0,
+        total_late_minutes: 5,
+        total_overtime_minutes: 3,
+        is_leave: false,
+        leave_type: null,
+    },
+    {
+        id: 'pa2',
+        employee_id: '2',
+        employee_name: 'Infirmier Kai Tanaka',
+        date: '2023-07-31',
+        morning_in: '07:58',
+        morning_out: '12:05',
+        afternoon_in: '13:55',
+        afternoon_out: '18:00',
+        total_worked_hours: 8.2,
+        total_late_minutes: 0,
+        total_overtime_minutes: 5,
+        is_leave: false,
+        leave_type: null,
+    },
+    {
+        id: 'pa3',
+        employee_id: '3',
+        employee_name: 'Admin Zara Ahmed',
+        date: '2023-07-31',
+        morning_in: null,
+        morning_out: null,
+        afternoon_in: null,
+        afternoon_out: null,
+        total_worked_hours: 0,
+        total_late_minutes: 0,
+        total_overtime_minutes: 0,
+        is_leave: true,
+        leave_type: 'Congé Annuel',
+    },
+     {
+        id: 'pa4',
+        employee_id: '5',
+        employee_name: 'Infirmière Maya Singh',
+        date: '2023-07-31',
+        morning_in: '08:20',
+        morning_out: '12:15',
+        afternoon_in: '14:05',
+        afternoon_out: '18:10',
+        total_worked_hours: 7.8,
+        total_late_minutes: 25,
+        total_overtime_minutes: 25,
+        is_leave: false,
+        leave_type: null,
+    },
 ]

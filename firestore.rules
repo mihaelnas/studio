@@ -181,6 +181,16 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isHR();
     }
+     /**
+     * @description Rules for processed daily attendance records.
+     * @path /processedAttendance/{processedAttendanceId}
+     * @allow Read access is granted to HR for analysis and reporting.
+     * @deny All write operations are restricted to backend processes (represented by isHR) to ensure data integrity.
+     * @principle Protects cleaned data while making it available for reporting.
+     */
+    match /processedAttendance/{processedAttendanceId} {
+      allow get, list: if isHR();
+      allow create, update, delete: if isHR();
+    }
   }
 }
-    

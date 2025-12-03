@@ -44,4 +44,18 @@ export type AttendanceLog = {
     createdAt: Timestamp;
 }
 
-    
+export type ProcessedAttendance = {
+    id: string;
+    employee_id: string;
+    employee_name?: string; // Optional: denormalized for display
+    date: string;
+    morning_in: string | null;
+    morning_out: string | null;
+    afternoon_in: string | null;
+    afternoon_out: string | null;
+    total_worked_hours: number;
+    total_late_minutes: number;
+    total_overtime_minutes: number;
+    is_leave: boolean;
+    leave_type: string | null;
+}

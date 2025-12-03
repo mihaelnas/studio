@@ -33,7 +33,7 @@ export default function LogsPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Logs de Pointage en Temps Réel</CardTitle>
+        <CardTitle>Logs de Pointage Bruts en Temps Réel</CardTitle>
         <CardDescription>
           Historique brut de tous les événements de pointage importés depuis les appareils biométriques.
         </CardDescription>
