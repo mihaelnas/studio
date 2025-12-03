@@ -75,6 +75,10 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isHR();
     }
+    
+    match /schedules/{scheduleId} {
+      allow get, list, create, update, delete: if isSignedIn();
+    }
 
     /**
      * @description Rules for the top-level employees collection.
