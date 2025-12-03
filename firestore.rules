@@ -70,6 +70,11 @@ service cloud.firestore {
     function isEmployeeIdImmutable() {
       return request.resource.data.employeeId == resource.data.employeeId;
     }
+    
+    match /manualCorrections/{manualCorrectionId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isHR();
+    }
 
     /**
      * @description Rules for the top-level employees collection.
@@ -141,20 +146,6 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for manual corrections to attendance, an HR-only function.
-     * @path /employees/{employeeId}/manualCorrections/{manualCorrectionId}
-     * @allow An HR admin updates a manual correction `(update)`.
-     * @deny A standard employee attempts to create a correction for themselves `(create)`.
-     * @principle Restricts writes to HR and allows employees read-only access to their own data tree.
-     */
-    match /employees/{employeeId}/manualCorrections/{manualCorrectionId} {
-      allow get, list: if isHR() || isOwner(employeeId);
-      allow create: if isHR() && isCorrectEmployeeOnCreate(employeeId);
-      allow update: if isHR() && resource != null && isEmployeeIdImmutable();
-      allow delete: if isHR() && resource != null;
-    }
-
-    /**
      * @description Rules for employee work schedules.
      * @path /employees/{employeeId}/schedules/{employeeScheduleId}
      * @allow An employee lists their own upcoming schedules `(list)`.
@@ -206,3 +197,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
