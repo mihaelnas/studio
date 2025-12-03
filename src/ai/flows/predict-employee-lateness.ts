@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { getWeatherForecast } from '@/ai/tools/weather';
 
 const PredictEmployeeLatenessInputSchema = z.object({
   employeeId: z.string().describe("L'ID de l'employé."),
@@ -32,11 +33,16 @@ const prompt = ai.definePrompt({
   name: 'predictEmployeeLatenessPrompt',
   input: {schema: PredictEmployeeLatenessInputSchema},
   output: {schema: PredictEmployeeLatenessOutputSchema},
-  prompt: `Vous êtes un analyste RH qui prédit les retards des employés en se basant sur les données historiques de présence.
+  tools: [getWeatherForecast],
+  prompt: `Vous êtes un analyste RH qui prédit les retards des employés en se basant sur les données historiques de présence et les prévisions météo.
 
   Analysez les données historiques de présence suivantes pour l'employé :
   ID de l'employé : {{{employeeId}}}
   Données historiques de présence : {{{historicalAttendanceData}}}
+
+  Utilisez l'outil de prévisions météo pour vérifier s'il pleuvra demain à Antananarivo.
+  Tenez compte des schémas passés et de la météo pour prédire si l'employé est susceptible d'être en retard.
+  Par exemple, si de fortes pluies sont prévues, le risque de retard peut augmenter.
 
   Sur la base de ces données, prédisez si l'employé est susceptible d'être en retard.
   Fournissez une raison pour votre prédiction et un niveau de risque (Élevé, Moyen, Faible).
