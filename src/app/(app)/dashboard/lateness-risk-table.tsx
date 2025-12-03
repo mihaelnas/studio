@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -54,8 +54,8 @@ export function LatenessRiskTable() {
           </TableHeader>
           <TableBody>
             {employees.map((employee) => (
-                <>
-                    <TableRow key={employee.id}>
+                <React.Fragment key={employee.id}>
+                    <TableRow>
                         <TableCell>
                         <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
@@ -108,7 +108,7 @@ export function LatenessRiskTable() {
                             </TableCell>
                         </TableRow>
                     )}
-                </>
+                </React.Fragment>
             ))}
           </TableBody>
         </Table>
