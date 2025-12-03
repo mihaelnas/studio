@@ -1,0 +1,426 @@
+{
+  "entities": {
+    "Employee": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Employee",
+      "type": "object",
+      "description": "Represents an employee within the medical center.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the employee."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the employee."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the employee."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "The unique id assigned to the employee within the company"
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the employee.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "employeeId"
+      ]
+    },
+    "AttendanceRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AttendanceRecord",
+      "type": "object",
+      "description": "Represents a single attendance record (check-in or check-out) from the ZK machine.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the attendance record."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Reference to Employee. (Relationship: Employee 1:N AttendanceRecord)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time of the attendance event (check-in or check-out).",
+          "format": "date-time"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "The type of attendance event: 'check-in' or 'check-out'."
+        },
+        "zkMachineId": {
+          "type": "string",
+          "description": "Identifier of the ZK machine that recorded the event."
+        }
+      },
+      "required": [
+        "id",
+        "employeeId",
+        "timestamp",
+        "eventType",
+        "zkMachineId"
+      ]
+    },
+    "PayrollData": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PayrollData",
+      "type": "object",
+      "description": "Represents the calculated payroll data for an employee for a specific period.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the payroll data record."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Reference to Employee. (Relationship: Employee 1:N PayrollData)"
+        },
+        "month": {
+          "type": "number",
+          "description": "The month for which the payroll is calculated (1-12)."
+        },
+        "year": {
+          "type": "number",
+          "description": "The year for which the payroll is calculated."
+        },
+        "totalHoursWorked": {
+          "type": "number",
+          "description": "The total number of hours the employee worked during the period."
+        },
+        "hourlyRate": {
+          "type": "number",
+          "description": "The employee's hourly rate."
+        },
+        "totalSalary": {
+          "type": "number",
+          "description": "The total salary earned by the employee for the period."
+        }
+      },
+      "required": [
+        "id",
+        "employeeId",
+        "month",
+        "year",
+        "totalHoursWorked",
+        "hourlyRate",
+        "totalSalary"
+      ]
+    },
+    "AbsencePrediction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AbsencePrediction",
+      "type": "object",
+      "description": "Represents the AI's prediction of an employee's likelihood of being late.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the absence prediction record."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Reference to Employee. (Relationship: Employee 1:N AbsencePrediction)"
+        },
+        "predictionDate": {
+          "type": "string",
+          "description": "The date for which the prediction is made.",
+          "format": "date-time"
+        },
+        "riskLevel": {
+          "type": "string",
+          "description": "The predicted risk level (e.g., 'High', 'Medium', 'Low')."
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Explanation provided by the AI model for the prediction."
+        }
+      },
+      "required": [
+        "id",
+        "employeeId",
+        "predictionDate",
+        "riskLevel",
+        "explanation"
+      ]
+    },
+    "ManualCorrection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ManualCorrection",
+      "type": "object",
+      "description": "Represents a manual correction made to an employee's attendance record.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the manual correction record."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Reference to Employee. (Relationship: Employee 1:N ManualCorrection)"
+        },
+        "correctionDate": {
+          "type": "string",
+          "description": "The date for which the correction was made.",
+          "format": "date-time"
+        },
+        "correctedBy": {
+          "type": "string",
+          "description": "The ID of the user (HR staff) who made the correction."
+        },
+        "correctionReason": {
+          "type": "string",
+          "description": "The reason provided for the manual correction."
+        },
+        "originalCheckIn": {
+          "type": "string",
+          "description": "The original check in timestamp before the manual change. (Relationship: AttendanceRecord 1:1 ManualCorrection)",
+          "format": "date-time"
+        },
+        "originalCheckOut": {
+          "type": "string",
+          "description": "The original check out timestamp before the manual change. (Relationship: AttendanceRecord 1:1 ManualCorrection)",
+          "format": "date-time"
+        },
+        "correctedCheckIn": {
+          "type": "string",
+          "description": "The corrected check in timestamp (morning).",
+          "format": "date-time"
+        },
+        "correctedCheckOut": {
+          "type": "string",
+          "description": "The corrected check out timestamp (morning)",
+          "format": "date-time"
+        },
+        "correctedCheckInAfternoon": {
+          "type": "string",
+          "description": "The corrected check in timestamp (afternoon).",
+          "format": "date-time"
+        },
+        "correctedCheckOutAfternoon": {
+          "type": "string",
+          "description": "The corrected check out timestamp (afternoon)",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "employeeId",
+        "correctionDate",
+        "correctedBy",
+        "correctionReason"
+      ]
+    },
+    "Shift": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Shift",
+      "type": "object",
+      "description": "Represents a work shift.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the shift."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the shift (e.g., 'Morning', 'Night', 'Day')."
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time of the shift (e.g., '08:00')."
+        },
+        "endTime": {
+          "type": "string",
+          "description": "End time of the shift (e.g., '16:00')."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "startTime",
+        "endTime"
+      ]
+    },
+    "EmployeeSchedule": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EmployeeSchedule",
+      "type": "object",
+      "description": "Represents an employee's schedule for a specific date.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the employee schedule."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Reference to Employee. (Relationship: Employee 1:N EmployeeSchedule)"
+        },
+        "shiftId": {
+          "type": "string",
+          "description": "Reference to Shift. (Relationship: Shift 1:N EmployeeSchedule)"
+        },
+        "scheduleDate": {
+          "type": "string",
+          "description": "The date of the scheduled shift.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "employeeId",
+        "shiftId",
+        "scheduleDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/employees/{employeeId}",
+        "definition": {
+          "entityName": "Employee",
+          "schema": {
+            "$ref": "#/backend/entities/Employee"
+          },
+          "description": "Stores employee profile information. The 'employeeId' is used as the document ID.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "The unique ID of the employee."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}/attendanceRecords/{attendanceRecordId}",
+        "definition": {
+          "entityName": "AttendanceRecord",
+          "schema": {
+            "$ref": "#/backend/entities/AttendanceRecord"
+          },
+          "description": "Stores attendance records for each employee. Includes denormalized 'employeeId' for authorization independence.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "The unique ID of the employee."
+            },
+            {
+              "name": "attendanceRecordId",
+              "description": "The unique ID of the attendance record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}/payrollData/{payrollDataId}",
+        "definition": {
+          "entityName": "PayrollData",
+          "schema": {
+            "$ref": "#/backend/entities/PayrollData"
+          },
+          "description": "Stores payroll data for each employee. Includes denormalized 'employeeId' for authorization independence.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "The unique ID of the employee."
+            },
+            {
+              "name": "payrollDataId",
+              "description": "The unique ID of the payroll data record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}/absencePredictions/{absencePredictionId}",
+        "definition": {
+          "entityName": "AbsencePrediction",
+          "schema": {
+            "$ref": "#/backend/entities/AbsencePrediction"
+          },
+          "description": "Stores absence predictions for each employee. Includes denormalized 'employeeId' for authorization independence.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "The unique ID of the employee."
+            },
+            {
+              "name": "absencePredictionId",
+              "description": "The unique ID of the absence prediction record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}/manualCorrections/{manualCorrectionId}",
+        "definition": {
+          "entityName": "ManualCorrection",
+          "schema": {
+            "$ref": "#/backend/entities/ManualCorrection"
+          },
+          "description": "Stores manual corrections made to attendance records for each employee. Includes denormalized 'employeeId' for authorization independence. Requires HR Role.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "The unique ID of the employee."
+            },
+            {
+              "name": "manualCorrectionId",
+              "description": "The unique ID of the manual correction record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/shifts/{shiftId}",
+        "definition": {
+          "entityName": "Shift",
+          "schema": {
+            "$ref": "#/backend/entities/Shift"
+          },
+          "description": "Stores information about different work shifts.",
+          "params": [
+            {
+              "name": "shiftId",
+              "description": "The unique ID of the shift."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}/schedules/{employeeScheduleId}",
+        "definition": {
+          "entityName": "EmployeeSchedule",
+          "schema": {
+            "$ref": "#/backend/entities/EmployeeSchedule"
+          },
+          "description": "Stores employee schedule information.  Includes denormalized 'employeeId' for authorization independence.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "The unique ID of the employee."
+            },
+            {
+              "name": "employeeScheduleId",
+              "description": "The unique ID of the employee schedule record."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure is designed to support the Miaraka Health HR application, focusing on real-time attendance tracking, payroll management, absence prediction, and shift scheduling. The structure prioritizes authorization independence, clarity, and scalability, adhering to the core design principles. Each entity is stored in its own collection, with subcollections used to represent one-to-many relationships where appropriate.  Crucially, data required for authorization (such as user roles or group memberships) is denormalized to avoid costly and insecure `get()` calls in the security rules.  This also supports the necessary QAPs (Query Approval Patterns).  For example, the `attendanceRecords` subcollection denormalizes `employeeId` allowing secure listing of attendance records specific to a given employee. This structure facilitates clear and maintainable security rules, ensuring data access is controlled according to the application's requirements."
+  }
+}
