@@ -80,7 +80,7 @@ service cloud.firestore {
      */
     match /employees/{employeeId} {
       allow get: if isHR() || isOwner(employeeId);
-      allow list: if isHR();
+      allow list: if isSignedIn();
       allow create: if isHR() && request.resource.data.id == employeeId;
       allow update: if isHR() && resource != null && request.resource.data.id == resource.data.id;
       allow delete: if isHR() && resource != null;
