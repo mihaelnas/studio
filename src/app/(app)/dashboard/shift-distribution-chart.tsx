@@ -10,34 +10,34 @@ import {
 } from "@/components/ui/chart"
 
 const chartData = [
-  { shift: "Matin", count: 275, fill: "var(--color-morning)" },
-  { shift: "Après-midi", count: 200, fill: "var(--color-afternoon)" },
-  { shift: "Nuit", count: 187, fill: "var(--color-night)" },
-  { shift: "Journée", count: 173, fill: "var(--color-full_day)" },
-  { shift: "Repos", count: 90, fill: "var(--color-off)" },
+  { shift: "Matin", count: 275 },
+  { shift: "Après-midi", count: 200 },
+  { shift: "Nuit", count: 187 },
+  { shift: "Journée", count: 173 },
+  { shift: "Repos", count: 90 },
 ]
 
 const chartConfig = {
   count: {
     label: "Employés",
   },
-  morning: {
+  Matin: {
     label: "Matin",
     color: "hsl(var(--chart-1))",
   },
-  afternoon: {
+  "Après-midi": {
     label: "Après-midi",
     color: "hsl(var(--chart-2))",
   },
-  night: {
+  Nuit: {
     label: "Nuit",
     color: "hsl(var(--chart-3))",
   },
-  full_day: {
+  Journée: {
     label: "Journée",
     color: "hsl(var(--chart-4))",
   },
-  off: {
+  Repos: {
     label: "Repos",
     color: "hsl(var(--muted))",
   },

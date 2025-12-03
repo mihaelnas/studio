@@ -10,39 +10,39 @@ import {
 } from "@/components/ui/chart"
 
 const chartData = [
-  { department: "Cardiologie", hours: 186, fill: "var(--color-cardiology)" },
-  { department: "Pédiatrie", hours: 305, fill: "var(--color-pediatrics)" },
-  { department: "Urgences", hours: 237, fill: "var(--color-emergency)" },
-  { department: "Chirurgie", hours: 73, fill: "var(--color-surgery)" },
-  { department: "Orthopédie", hours: 209, fill: "var(--color-orthopedics)" },
-  { department: "Admin", hours: 150, fill: "var(--color-admin)" },
+  { department: "Cardiologie", hours: 186 },
+  { department: "Pédiatrie", hours: 305 },
+  { department: "Urgences", hours: 237 },
+  { department: "Chirurgie", hours: 73 },
+  { department: "Orthopédie", hours: 209 },
+  { department: "Admin", hours: 150 },
 ]
 
 const chartConfig = {
   hours: {
     label: "Heures",
   },
-  cardiology: {
+  Cardiologie: {
     label: "Cardiologie",
     color: "hsl(var(--chart-1))",
   },
-  pediatrics: {
+  Pédiatrie: {
     label: "Pédiatrie",
     color: "hsl(var(--chart-2))",
   },
-  emergency: {
+  Urgences: {
     label: "Urgences",
     color: "hsl(var(--chart-3))",
   },
-  surgery: {
+  Chirurgie: {
     label: "Chirurgie",
     color: "hsl(var(--chart-4))",
   },
-  orthopedics: {
+  Orthopédie: {
     label: "Orthopédie",
     color: "hsl(var(--chart-5))",
   },
-  admin: {
+  Admin: {
       label: "Administration",
       color: "hsl(var(--muted-foreground))"
   }
@@ -63,7 +63,7 @@ export function HoursByDepartmentChart() {
           cursor={false}
           content={<ChartTooltipContent indicator="dashed" />}
         />
-        <Bar dataKey="hours" radius={8} />
+        <Bar dataKey="hours" radius={8} nameKey="department" />
       </BarChart>
     </ChartContainer>
   )
