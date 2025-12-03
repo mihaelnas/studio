@@ -1,10 +1,13 @@
 import type { Employee, Correction, Shift, AttendanceLog, ProcessedAttendance } from './types';
+import { PlaceHolderImages } from './placeholder-images';
+
+const findImage = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
 
 export const employees: Employee[] = [
   {
     id: '1',
     name: 'Dr. Elara Vance',
-    avatarUrl: 'https://picsum.photos/seed/1/100/100',
+    avatarUrl: findImage('avatar1'),
     department: 'Cardiologie',
     latenessRisk: 'Élevé',
     historicalAttendanceData: 'Souvent en retard le lundi, arrivée moyenne à 8h15 pour un début à 8h00. Arrivées tardives fréquentes après les jours fériés.',
@@ -12,7 +15,7 @@ export const employees: Employee[] = [
   {
     id: '2',
     name: 'Infirmier Kai Tanaka',
-    avatarUrl: 'https://picsum.photos/seed/2/100/100',
+    avatarUrl: findImage('avatar2'),
     department: 'Pédiatrie',
     latenessRisk: 'Faible',
     historicalAttendanceData: 'Constamment à l\'heure. Aucun retard enregistré au cours des 6 derniers mois.',
@@ -20,7 +23,7 @@ export const employees: Employee[] = [
   {
     id: '3',
     name: 'Admin Zara Ahmed',
-    avatarUrl: 'https://picsum.photos/seed/3/100/100',
+    avatarUrl: findImage('avatar3'),
     department: 'Administration',
     latenessRisk: 'Moyen',
     historicalAttendanceData: 'Retards occasionnels (1-2 fois par mois), généralement de 5 à 10 minutes. Corrélation avec les jours de forte circulation.',
@@ -28,7 +31,7 @@ export const employees: Employee[] = [
   {
     id: '4',
     name: 'Dr. Leo Martinez',
-    avatarUrl: 'https://picsum.photos/seed/4/100/100',
+    avatarUrl: findImage('avatar4'),
     department: 'Orthopédie',
     latenessRisk: 'Faible',
     historicalAttendanceData: 'Excellent dossier de présence. Toujours ponctuel.',
@@ -36,7 +39,7 @@ export const employees: Employee[] = [
   {
     id: '5',
     name: 'Infirmière Maya Singh',
-    avatarUrl: 'https://picsum.photos/seed/5/100/100',
+    avatarUrl: findImage('avatar5'),
     department: 'Urgences',
     latenessRisk: 'Élevé',
     historicalAttendanceData: 'Schéma de retard pour les gardes de nuit, en moyenne 20 minutes de retard. 3 cas le mois dernier.',
@@ -44,7 +47,7 @@ export const employees: Employee[] = [
   {
     id: '6',
     name: 'Chirurgien Ben Carter',
-    avatarUrl: 'https://picsum.photos/seed/6/100/100',
+    avatarUrl: findImage('avatar6'),
     department: 'Chirurgie',
     latenessRisk: 'Moyen',
     historicalAttendanceData: 'A tendance à être en retard les jours suivant une longue garde. Retard moyen de 15 minutes.',
@@ -55,7 +58,7 @@ export const corrections: Correction[] = [
     {
         id: 'corr1',
         adminName: 'Responsable RH',
-        adminAvatarUrl: 'https://picsum.photos/seed/admin/100/100',
+        adminAvatarUrl: findImage('avatarAdmin'),
         employeeName: 'Dr. Elara Vance',
         date: new Date('2023-11-15T00:00:00.000Z'),
         reason: 'A oublié de badger en partant après la garde du matin.',
@@ -64,7 +67,7 @@ export const corrections: Correction[] = [
     {
         id: 'corr2',
         adminName: 'Responsable RH',
-        adminAvatarUrl: 'https://picsum.photos/seed/admin/100/100',
+        adminAvatarUrl: findImage('avatarAdmin'),
         employeeName: 'Infirmière Maya Singh',
         date: new Date('2023-11-14T00:00:00.000Z'),
         reason: 'Dysfonctionnement du lecteur biométrique.',
@@ -73,7 +76,7 @@ export const corrections: Correction[] = [
      {
         id: 'corr3',
         adminName: 'Responsable RH',
-        adminAvatarUrl: 'https://picsum.photos/seed/admin/100/100',
+        adminAvatarUrl: findImage('avatarAdmin'),
         employeeName: 'Chirurgien Ben Carter',
         date: new Date('2023-11-13T00:00:00.000Z'),
         reason: 'Chirurgie d\'urgence prolongée au-delà des heures de garde, ajustement manuel requis.',
