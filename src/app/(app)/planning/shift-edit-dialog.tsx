@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { employees } from "@/lib/data";
 import type { Shift, ShiftType } from "@/lib/types";
 import { format } from "date-fns";
+import { fr } from 'date-fns/locale';
 
 interface ShiftEditDialogProps {
   shift: Shift | null;
@@ -32,7 +33,7 @@ interface ShiftEditDialogProps {
   children: React.ReactNode;
 }
 
-const shiftTypes: ShiftType[] = ['Morning', 'Afternoon', 'Full Day', 'Night Shift', 'Off'];
+const shiftTypes: ShiftType[] = ['Matin', 'Après-midi', 'Journée Complète', 'Garde de Nuit', 'Repos'];
 
 export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: ShiftEditDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,8 +47,8 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
     if (!selectedEmployeeId || !selectedShiftType) {
         toast({
             variant: "destructive",
-            title: "Error",
-            description: "Please select an employee and a shift type.",
+            title: "Erreur",
+            description: "Veuillez sélectionner un employé et un type de garde.",
         });
         return;
     }
@@ -61,8 +62,8 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
     
     onSave(newShift);
     toast({
-        title: "Shift Saved",
-        description: `${employee?.name}'s shift for ${format(date, 'PPP')} has been updated to ${selectedShiftType}.`,
+        title: "Garde Enregistrée",
+        description: `La garde de ${employee?.name} pour le ${format(date, 'PPP', { locale: fr })} a été mise à jour à ${selectedShiftType}.`,
     });
     setIsOpen(false);
   };
@@ -73,16 +74,16 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {shift ? "Edit Shift" : "Assign Shift"} for {format(date, "PPP")}
+            {shift ? "Modifier la Garde" : "Assigner une Garde"} pour le {format(date, "PPP", { locale: fr })}
           </DialogTitle>
           <DialogDescription>
-            {shift ? `Modify the shift for ${employee?.name}.` : "Assign a new shift to an employee."}
+            {shift ? `Modifier la garde pour ${employee?.name}.` : "Assigner une nouvelle garde à un employé."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="employee" className="text-right">
-              Employee
+              Employé
             </Label>
             <div className="col-span-3">
             <Select
@@ -91,7 +92,7 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
                 disabled={!!shift}
             >
                 <SelectTrigger id="employee">
-                    <SelectValue placeholder="Select Employee" />
+                    <SelectValue placeholder="Sélectionner l'Employé" />
                 </SelectTrigger>
                 <SelectContent>
                     {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
@@ -101,12 +102,12 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="shift-type" className="text-right">
-              Shift Type
+              Type de Garde
             </Label>
             <div className="col-span-3">
             <Select value={selectedShiftType} onValueChange={(v) => setSelectedShiftType(v as ShiftType)}>
                 <SelectTrigger id="shift-type">
-                    <SelectValue placeholder="Select Shift" />
+                    <SelectValue placeholder="Sélectionner la Garde" />
                 </SelectTrigger>
                 <SelectContent>
                     {shiftTypes.map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
@@ -116,8 +117,8 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button type="submit" onClick={handleSave}>Save changes</Button>
+          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
+          <Button type="submit" onClick={handleSave}>Enregistrer</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

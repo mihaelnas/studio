@@ -3,7 +3,7 @@ export type Employee = {
   name: string;
   avatarUrl: string;
   department: string;
-  latenessRisk: 'High' | 'Medium' | 'Low';
+  latenessRisk: 'Élevé' | 'Moyen' | 'Faible';
   historicalAttendanceData: string;
 };
 
@@ -17,7 +17,7 @@ export type Correction = {
   timestamp: Date;
 };
 
-export type ShiftType = 'Morning' | 'Afternoon' | 'Full Day' | 'Night Shift' | 'Off';
+export type ShiftType = 'Matin' | 'Après-midi' | 'Journée Complète' | 'Garde de Nuit' | 'Repos';
 
 export type Shift = {
   id: string;

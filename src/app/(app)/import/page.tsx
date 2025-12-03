@@ -6,9 +6,9 @@ export default function ImportPage() {
     <div className="flex flex-col gap-8">
       <Card>
         <CardHeader>
-          <CardTitle>Import Biometric Logs</CardTitle>
+          <CardTitle>Importer les Logs Biométriques</CardTitle>
           <CardDescription>
-            Upload the raw `.txt` file from your biometric attendance device to process clock-in and clock-out data.
+            Téléchargez le fichier `.txt` brut de votre appareil de pointage biométrique pour traiter les données d'arrivée et de départ.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -7,9 +7,9 @@ export default function CorrectionsPage() {
     <div className="flex flex-col gap-8">
       <Card>
         <CardHeader>
-          <CardTitle>Manual Time Correction</CardTitle>
+          <CardTitle>Correction Manuelle des Pointages</CardTitle>
           <CardDescription>
-            Adjust employee clock-in/out times. All changes are logged.
+            Ajustez les heures d'arrivée et de départ des employés. Toutes les modifications sont enregistrées.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -18,9 +18,9 @@ export default function CorrectionsPage() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Correction History</CardTitle>
+          <CardTitle>Historique des Corrections</CardTitle>
           <CardDescription>
-            Audit trail of the latest manual adjustments.
+            Journal d'audit des derniers ajustements manuels.
           </CardDescription>
         </CardHeader>
         <CardContent>

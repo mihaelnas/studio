@@ -5,9 +5,9 @@ export default function PlanningPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Shift Planning</CardTitle>
+        <CardTitle>Planification des Gardes</CardTitle>
         <CardDescription>
-          Assign and manage weekly shifts for all medical staff. Click on a shift to edit or on a '+' to assign.
+          Assignez et gérez les gardes hebdomadaires pour tout le personnel médical. Cliquez sur une garde pour la modifier ou sur un '+' pour en assigner une.
         </CardDescription>
       </CardHeader>
       <CardContent>

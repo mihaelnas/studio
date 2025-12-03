@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { addDays, startOfWeek, format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { shifts as initialShifts, employees } from '@/lib/data';
 import type { Shift, Employee, ShiftType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,11 +16,11 @@ const weekStartsOn = 1; // Monday
 
 const getShiftBadgeVariant = (shiftType: ShiftType) => {
     switch(shiftType) {
-        case 'Night Shift': return 'destructive';
-        case 'Full Day': return 'default';
-        case 'Morning':
-        case 'Afternoon': return 'secondary';
-        case 'Off': return 'outline';
+        case 'Garde de Nuit': return 'destructive';
+        case 'Journée Complète': return 'default';
+        case 'Matin':
+        case 'Après-midi': return 'secondary';
+        case 'Repos': return 'outline';
         default: return 'outline';
     }
 }
@@ -28,7 +29,7 @@ export function SchedulePlanner() {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const weekStart = startOfWeek(currentDate, { weekStartsOn });
+  const weekStart = startOfWeek(currentDate, { weekStartsOn, locale: fr });
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
 
   const getShiftForEmployeeAndDay = (employeeId: string, day: Date): Shift | undefined => {
@@ -58,14 +59,14 @@ export function SchedulePlanner() {
   return (
     <div className="space-y-4">
         <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
-                Week of {format(weekStart, 'MMMM do')}
+            <h2 className="text-xl font-semibold capitalize">
+                Semaine du {format(weekStart, 'd MMMM', { locale: fr })}
             </h2>
             <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={() => changeWeek('prev')}>
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" onClick={() => setCurrentDate(new Date())}>Today</Button>
+                <Button variant="outline" onClick={() => setCurrentDate(new Date())}>Aujourd'hui</Button>
                 <Button variant="outline" size="icon" onClick={() => changeWeek('next')}>
                     <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -75,11 +76,11 @@ export function SchedulePlanner() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[250px]">Employee</TableHead>
+              <TableHead className="w-[250px]">Employé</TableHead>
               {weekDays.map((day) => (
-                <TableHead key={day.toString()} className="text-center">
-                    <div>{format(day, 'E')}</div>
-                    <div className="text-xs font-normal">{format(day, 'd')}</div>
+                <TableHead key={day.toString()} className="text-center capitalize">
+                    <div>{format(day, 'E', { locale: fr })}</div>
+                    <div className="text-xs font-normal">{format(day, 'd', { locale: fr })}</div>
                 </TableHead>
               ))}
             </TableRow>

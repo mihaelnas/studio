@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
+import { fr } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -36,13 +37,13 @@ import { useToast } from "@/hooks/use-toast";
 import { employees } from "@/lib/data";
 
 const formSchema = z.object({
-  employeeId: z.string({ required_error: "Please select an employee." }),
-  date: z.date({ required_error: "A date is required." }),
-  morningIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Invalid time format (HH:MM)" }).optional(),
-  morningOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Invalid time format (HH:MM)" }).optional(),
-  afternoonIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Invalid time format (HH:MM)" }).optional(),
-  afternoonOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Invalid time format (HH:MM)" }).optional(),
-  reason: z.string().min(10, { message: "Reason must be at least 10 characters." }),
+  employeeId: z.string({ required_error: "Veuillez sélectionner un employé." }),
+  date: z.date({ required_error: "Une date est requise." }),
+  morningIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional(),
+  morningOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional(),
+  afternoonIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional(),
+  afternoonOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional(),
+  reason: z.string().min(10, { message: "La raison doit comporter au moins 10 caractères." }),
 });
 
 export function CorrectionForm() {
@@ -57,8 +58,8 @@ export function CorrectionForm() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log(values);
     toast({
-      title: "Correction Submitted",
-      description: "The time log has been successfully updated.",
+      title: "Correction Soumise",
+      description: "Le journal de présence a été mis à jour avec succès.",
     });
     form.reset();
   }
@@ -72,11 +73,11 @@ export function CorrectionForm() {
             name="employeeId"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Employee</FormLabel>
+                <FormLabel>Employé</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                     <SelectTrigger>
-                        <SelectValue placeholder="Select an employee to correct" />
+                        <SelectValue placeholder="Sélectionnez un employé à corriger" />
                     </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -94,7 +95,7 @@ export function CorrectionForm() {
             name="date"
             render={({ field }) => (
                 <FormItem className="flex flex-col">
-                <FormLabel>Date of Correction</FormLabel>
+                <FormLabel>Date de la Correction</FormLabel>
                 <Popover>
                     <PopoverTrigger asChild>
                     <FormControl>
@@ -106,9 +107,9 @@ export function CorrectionForm() {
                         )}
                         >
                         {field.value ? (
-                            format(field.value, "PPP")
+                            format(field.value, "PPP", { locale: fr })
                         ) : (
-                            <span>Pick a date</span>
+                            <span>Choisissez une date</span>
                         )}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
@@ -116,6 +117,7 @@ export function CorrectionForm() {
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
+                        locale={fr}
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
@@ -134,16 +136,16 @@ export function CorrectionForm() {
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <FormField control={form.control} name="morningIn" render={({ field }) => (
-                <FormItem><FormLabel>Morning In</FormLabel><FormControl><Input placeholder="08:00" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Arrivée Matin</FormLabel><FormControl><Input placeholder="08:00" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="morningOut" render={({ field }) => (
-                <FormItem><FormLabel>Morning Out</FormLabel><FormControl><Input placeholder="12:00" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Départ Matin</FormLabel><FormControl><Input placeholder="12:00" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="afternoonIn" render={({ field }) => (
-                <FormItem><FormLabel>Afternoon In</FormLabel><FormControl><Input placeholder="13:00" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Arrivée Après-midi</FormLabel><FormControl><Input placeholder="13:00" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="afternoonOut" render={({ field }) => (
-                <FormItem><FormLabel>Afternoon Out</FormLabel><FormControl><Input placeholder="17:00" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Départ Après-midi</FormLabel><FormControl><Input placeholder="17:00" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
         </div>
 
@@ -152,22 +154,22 @@ export function CorrectionForm() {
           name="reason"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Reason for Correction</FormLabel>
+              <FormLabel>Raison de la Correction</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="e.g., Employee forgot to badge out for lunch."
+                  placeholder="Ex: L'employé a oublié de badger en partant déjeuner."
                   className="resize-none"
                   {...field}
                 />
               </FormControl>
               <FormDescription>
-                This reason will be logged in the audit trail.
+                Cette raison sera consignée dans le journal d'audit.
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit">Save Correction</Button>
+        <Button type="submit">Enregistrer la Correction</Button>
       </form>
     </Form>
   );

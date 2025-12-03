@@ -17,7 +17,7 @@ export function FileUploader() {
     if (acceptedFiles && acceptedFiles.length > 0) {
       if (acceptedFiles[0].type !== 'text/plain') {
           setStatus('error');
-          setErrorMessage("Invalid file type. Please upload a .txt file.");
+          setErrorMessage("Type de fichier invalide. Veuillez télécharger un fichier .txt.");
           setFile(null);
           return;
       }
@@ -54,7 +54,7 @@ export function FileUploader() {
       // Simulate a random error
       if (Math.random() > 0.8) {
           setStatus("error");
-          setErrorMessage("An unexpected error occurred during processing. The log file might be corrupted.");
+          setErrorMessage("Une erreur inattendue s'est produite lors du traitement. Le fichier de log pourrait être corrompu.");
       } else {
           setStatus("success");
       }
@@ -80,10 +80,10 @@ export function FileUploader() {
         <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
             <UploadCloud className="w-10 h-10 mb-4 text-muted-foreground" />
             <p className="mb-2 text-sm text-muted-foreground">
-                <span className="font-semibold">Click to upload</span> or drag and drop
+                <span className="font-semibold">Cliquez pour télécharger</span> ou glissez-déposez
             </p>
             <p className="text-xs text-muted-foreground">
-                Biometric log files (.txt only)
+                Fichiers de log biométriques (.txt uniquement)
             </p>
         </div>
       </div>
@@ -103,33 +103,33 @@ export function FileUploader() {
 
       {file && status === "idle" && (
         <Button onClick={handleUpload} className="w-full">
-          Start Import
+          Démarrer l'Importation
         </Button>
       )}
 
       {status === "uploading" && (
         <div className="space-y-2">
-            <p className="text-sm font-medium">Importing <span className="text-primary">{file?.name}</span>...</p>
+            <p className="text-sm font-medium">Importation de <span className="text-primary">{file?.name}</span>...</p>
             <Progress value={progress} />
         </div>
       )}
 
       {status === "success" && (
         <Alert variant="default" className="bg-green-50 border-green-200">
-          <AlertTitle className="text-green-800">Import Successful!</AlertTitle>
+          <AlertTitle className="text-green-800">Importation Réussie !</AlertTitle>
           <AlertDescription className="text-green-700">
-            Success: 150 pointages traités, 0 erreur. The attendance records have been updated.
+            Succès : 150 pointages traités, 0 erreur. Les registres de présence ont été mis à jour.
           </AlertDescription>
         </Alert>
       )}
       
       {status === "error" && (
         <Alert variant="destructive">
-          <AlertTitle>Import Failed</AlertTitle>
+          <AlertTitle>Échec de l'Importation</AlertTitle>
           <AlertDescription>
             <p>{errorMessage}</p>
-            {errorMessage.includes("corrupted") && (
-                <pre className="mt-2 p-2 bg-destructive/10 rounded-md font-code text-xs"><code>Error on line 42: Invalid time format '25:70'</code></pre>
+            {errorMessage.includes("corrompu") && (
+                <pre className="mt-2 p-2 bg-destructive/10 rounded-md font-code text-xs"><code>Erreur à la ligne 42: Format de l'heure invalide '25:70'</code></pre>
             )}
           </AlertDescription>
         </Alert>

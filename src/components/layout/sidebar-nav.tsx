@@ -6,10 +6,10 @@ import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui
 import { LayoutDashboard, Wrench, Upload, FileSpreadsheet, CalendarDays } from "lucide-react";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Tableau de Bord", icon: LayoutDashboard },
   { href: "/corrections", label: "Corrections", icon: Wrench },
-  { href: "/import", label: "Import Logs", icon: Upload },
-  { href: "/payroll", label: "Payroll", icon: FileSpreadsheet },
+  { href: "/import", label: "Importer Logs", icon: Upload },
+  { href: "/payroll", label: "Paie", icon: FileSpreadsheet },
   { href: "/planning", label: "Planning", icon: CalendarDays },
 ];
 

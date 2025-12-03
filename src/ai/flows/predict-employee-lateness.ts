@@ -12,15 +12,15 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const PredictEmployeeLatenessInputSchema = z.object({
-  employeeId: z.string().describe('The ID of the employee.'),
-  historicalAttendanceData: z.string().describe('Historical attendance data for the employee.'),
+  employeeId: z.string().describe("L'ID de l'employé."),
+  historicalAttendanceData: z.string().describe("Données historiques de présence de l'employé."),
 });
 export type PredictEmployeeLatenessInput = z.infer<typeof PredictEmployeeLatenessInputSchema>;
 
 const PredictEmployeeLatenessOutputSchema = z.object({
-  isLatenessPredicted: z.boolean().describe('Whether lateness is predicted for the employee.'),
-  reason: z.string().describe('The reason for the predicted lateness.'),
-  riskLevel: z.enum(['High', 'Medium', 'Low']).describe('The risk level of lateness.'),
+  isLatenessPredicted: z.boolean().describe("Indique si un retard est prédit pour l'employé."),
+  reason: z.string().describe("La raison du retard prédit."),
+  riskLevel: z.enum(['Élevé', 'Moyen', 'Faible']).describe("Le niveau de risque de retard."),
 });
 export type PredictEmployeeLatenessOutput = z.infer<typeof PredictEmployeeLatenessOutputSchema>;
 
@@ -32,20 +32,20 @@ const prompt = ai.definePrompt({
   name: 'predictEmployeeLatenessPrompt',
   input: {schema: PredictEmployeeLatenessInputSchema},
   output: {schema: PredictEmployeeLatenessOutputSchema},
-  prompt: `You are an HR analyst who predict employee lateness based on historical attendance data.
+  prompt: `Vous êtes un analyste RH qui prédit les retards des employés en se basant sur les données historiques de présence.
 
-  Analyze the following historical attendance data for the employee:
-  Employee ID: {{{employeeId}}}
-  Historical Attendance Data: {{{historicalAttendanceData}}}
+  Analysez les données historiques de présence suivantes pour l'employé :
+  ID de l'employé : {{{employeeId}}}
+  Données historiques de présence : {{{historicalAttendanceData}}}
 
-  Based on this data, predict whether the employee is likely to be late.
-  Provide a reason for your prediction and a risk level (High, Medium, Low).
+  Sur la base de ces données, prédisez si l'employé est susceptible d'être en retard.
+  Fournissez une raison pour votre prédiction et un niveau de risque (Élevé, Moyen, Faible).
 
-  Output in JSON format:
+  Sortie au format JSON :
   {
-    "isLatenessPredicted": true or false,
-    "reason": "reason for the predicted lateness",
-    "riskLevel": "High, Medium, or Low"
+    "isLatenessPredicted": true ou false,
+    "reason": "raison du retard prédit",
+    "riskLevel": "Élevé, Moyen, ou Faible"
   }`,
 });
 

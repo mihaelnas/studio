@@ -14,17 +14,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Stethoscope className="size-5" />
             </div>
-            <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">Miaraka Health</h1>
+            <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">Miaraka Santé</h1>
           </div>
         </SidebarHeader>
         <SidebarContent className="p-2">
           <SidebarNav />
         </SidebarContent>
         <SidebarFooter className="p-2">
-            <Button asChild variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" tooltip={{children: 'Log Out', side: 'right', align: 'center'}}>
+            <Button asChild variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" tooltip={{children: 'Se Déconnecter', side: 'right', align: 'center'}}>
                 <a>
                     <LogOut className="mr-2 h-5 w-5 shrink-0" />
-                    <span className="group-data-[collapsible=icon]:hidden">Log Out</span>
+                    <span className="group-data-[collapsible=icon]:hidden">Se Déconnecter</span>
                 </a>
             </Button>
         </SidebarFooter>

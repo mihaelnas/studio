@@ -8,6 +8,6 @@ export async function getLatenessExplanation(employeeId: string): Promise<string
     return result.explanation;
   } catch (error) {
     console.error("Error fetching lateness explanation:", error);
-    return "An error occurred while generating the explanation.";
+    return "Une erreur est survenue lors de la génération de l'explication.";
   }
 }

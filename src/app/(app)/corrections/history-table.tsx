@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { corrections } from "@/lib/data";
 import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import type { Correction } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -22,8 +23,8 @@ export function HistoryTable() {
     setFormattedCorrections(
       corrections.map(c => ({
         ...c,
-        timestamp: `${format(c.timestamp, "PPP")} at ${format(c.timestamp, "p")}`,
-        date: format(c.date, "PPP"),
+        timestamp: `${format(c.timestamp, "PPP", { locale: fr })} à ${format(c.timestamp, "p", { locale: fr })}`,
+        date: format(c.date, "PPP", { locale: fr }),
       }))
     );
   }, []);
@@ -33,10 +34,10 @@ export function HistoryTable() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Modified By</TableHead>
-            <TableHead>Employee</TableHead>
-            <TableHead>Date Modified</TableHead>
-            <TableHead>Reason</TableHead>
+            <TableHead>Modifié Par</TableHead>
+            <TableHead>Employé</TableHead>
+            <TableHead>Date de Modification</TableHead>
+            <TableHead>Raison</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -55,8 +56,8 @@ export function HistoryTable() {
                 <TableCell>{correction.employeeName}</TableCell>
                 <TableCell>
                   <div className="flex flex-col">
-                    <span>{correction.timestamp.split(' at ')[0]}</span>
-                    <span className="text-xs text-muted-foreground">{correction.timestamp.split(' at ')[1]}</span>
+                    <span>{correction.timestamp.split(' à ')[0]}</span>
+                    <span className="text-xs text-muted-foreground">{correction.timestamp.split(' à ')[1]}</span>
                   </div>
                 </TableCell>
                 <TableCell className="max-w-xs truncate">{correction.reason}</TableCell>

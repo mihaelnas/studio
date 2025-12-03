@@ -33,7 +33,7 @@ export function LatenessTable({ employees }: { employees: Employee[] }) {
       setExplanation(prev => ({ ...prev, [employeeId]: result }));
     } catch (error) {
       console.error("Failed to get explanation:", error);
-      setExplanation(prev => ({ ...prev, [employeeId]: "Could not load explanation." }));
+      setExplanation(prev => ({ ...prev, [employeeId]: "Impossible de charger l'explication." }));
     } finally {
       setLoading(prev => ({ ...prev, [employeeId]: false }));
     }
@@ -41,9 +41,9 @@ export function LatenessTable({ employees }: { employees: Employee[] }) {
 
   const getRiskVariant = (risk: Employee['latenessRisk']): "destructive" | "secondary" | "accent" => {
     switch (risk) {
-      case 'High':
+      case 'Élevé':
         return 'destructive';
-      case 'Medium':
+      case 'Moyen':
         return 'secondary';
       default:
         return 'accent';
@@ -51,7 +51,7 @@ export function LatenessTable({ employees }: { employees: Employee[] }) {
   };
   
   const getBadgeClass = (risk: Employee['latenessRisk']) => {
-    if (risk === 'Medium') {
+    if (risk === 'Moyen') {
         return 'bg-orange-400 text-white border-transparent hover:bg-orange-500';
     }
     return '';
@@ -63,14 +63,14 @@ export function LatenessTable({ employees }: { employees: Employee[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[300px]">Employee</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead className="text-right">Lateness Risk</TableHead>
+              <TableHead className="w-[300px]">Employé</TableHead>
+              <TableHead>Département</TableHead>
+              <TableHead className="text-right">Risque de Retard</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {employees.sort((a, b) => {
-                const riskOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
+                const riskOrder = { 'Élevé': 0, 'Moyen': 1, 'Faible': 2 };
                 return riskOrder[a.latenessRisk] - riskOrder[b.latenessRisk];
               }).map((employee) => (
                   <TableRow key={employee.id} onMouseEnter={() => handleHover(employee.id)} className="cursor-help">
@@ -87,7 +87,7 @@ export function LatenessTable({ employees }: { employees: Employee[] }) {
                             </TooltipTrigger>
                             <TooltipContent>
                                 <p className="max-w-xs">
-                                {loading[employee.id] ? "Loading explanation..." : explanation[employee.id] || "Hover to see AI explanation"}
+                                {loading[employee.id] ? "Chargement de l'explication..." : explanation[employee.id] || "Survolez pour voir l'explication de l'IA"}
                                 </p>
                             </TooltipContent>
                         </Tooltip>
@@ -99,7 +99,7 @@ export function LatenessTable({ employees }: { employees: Employee[] }) {
                             </TooltipTrigger>
                             <TooltipContent>
                                 <p className="max-w-xs">
-                                {loading[employee.id] ? "Loading explanation..." : explanation[employee.id] || "Hover to see AI explanation"}
+                                {loading[employee.id] ? "Chargement de l'explication..." : explanation[employee.id] || "Survolez pour voir l'explication de l'IA"}
                                 </p>
                             </TooltipContent>
                         </Tooltip>
@@ -113,7 +113,7 @@ export function LatenessTable({ employees }: { employees: Employee[] }) {
                             </TooltipTrigger>
                              <TooltipContent>
                                 <p className="max-w-xs">
-                                {loading[employee.id] ? "Loading explanation..." : explanation[employee.id] || "Hover to see AI explanation"}
+                                {loading[employee.id] ? "Chargement de l'explication..." : explanation[employee.id] || "Survolez pour voir l'explication de l'IA"}
                                 </p>
                             </TooltipContent>
                         </Tooltip>
