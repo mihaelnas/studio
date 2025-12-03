@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { LayoutDashboard, Wrench, Upload, FileSpreadsheet, CalendarDays, History, BarChart } from "lucide-react";
+import { LayoutDashboard, Wrench, Upload, FileSpreadsheet, CalendarDays, History, BarChart, Cog } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Tableau de Bord", icon: LayoutDashboard },
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/payroll", label: "Paie", icon: FileSpreadsheet },
   { href: "/import", label: "Importer Logs", icon: Upload },
   { href: "/logs", label: "Logs Bruts", icon: History },
+  { href: "/processing", label: "Traitement", icon: Cog },
   { href: "/analyses", label: "Analyses", icon: BarChart },
 ];
 
