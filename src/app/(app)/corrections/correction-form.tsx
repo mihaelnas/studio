@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,7 +35,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { employees } from "@/lib/data";
+import { useFirebase, useMemoFirebase } from "@/firebase";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, serverTimestamp } from 'firebase/firestore';
+import type { Employee } from "@/lib/types";
+
 
 const formSchema = z.object({
   employeeId: z.string({ required_error: "Veuillez sélectionner un employé." }),
@@ -48,6 +54,11 @@ const formSchema = z.object({
 
 export function CorrectionForm() {
   const { toast } = useToast();
+  const { firestore, user } = useFirebase();
+
+  const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
+  const { data: employees, isLoading: employeesLoading } = useCollection<Employee>(employeesQuery);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -56,7 +67,18 @@ export function CorrectionForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+    if (!firestore || !user) return;
+
+    const correctionData = {
+      ...values,
+      correctedBy: user.uid,
+      timestamp: serverTimestamp(),
+      date: format(values.date, "yyyy-MM-dd"),
+    };
+
+    const correctionsCollection = collection(firestore, 'manualCorrections');
+    addDocumentNonBlocking(correctionsCollection, correctionData);
+
     toast({
       title: "Correction Soumise",
       description: "Le journal de présence a été mis à jour avec succès.",
@@ -74,14 +96,14 @@ export function CorrectionForm() {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Employé</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={employeesLoading}>
                     <FormControl>
                     <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez un employé à corriger" />
+                        <SelectValue placeholder={employeesLoading ? "Chargement..." : "Sélectionnez un employé à corriger"} />
                     </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                    {employees.map(emp => (
+                    {employees?.map(emp => (
                         <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
                     ))}
                     </SelectContent>

@@ -1,3 +1,4 @@
+
 import type { Timestamp } from 'firebase/firestore';
 
 export type Employee = {
@@ -6,18 +7,22 @@ export type Employee = {
   email: string;
   avatarUrl: string;
   department: string;
-  latenessRisk: 'Élevé' | 'Moyen' | 'Faible';
-  historicalAttendanceData: string;
+  latenessRisk?: 'Élevé' | 'Moyen' | 'Faible';
+  historicalAttendanceData?: string;
 };
 
-export type Correction = {
+export type ManualCorrection = {
   id: string;
-  adminName: string;
-  adminAvatarUrl: string;
-  employeeName: string;
-  date: Date;
-  reason: string;
-  timestamp: Date;
+  employeeId: string;
+  correctionDate: string; // YYYY-MM-DD
+  correctedBy: string; // User ID
+  correctionReason: string;
+  timestamp: Timestamp;
+  // Optional time fields
+  morningIn?: string;
+  morningOut?: string;
+  afternoonIn?: string;
+  afternoonOut?: string;
 };
 
 export type ShiftType = 'Matin' | 'Après-midi' | 'Journée Complète' | 'Garde de Nuit' | 'Repos';
@@ -25,7 +30,7 @@ export type ShiftType = 'Matin' | 'Après-midi' | 'Journée Complète' | 'Garde 
 export type Shift = {
   id: string;
   employeeId: string;
-  date: Date;
+  date: Date | string; // Can be Date object or 'YYYY-MM-DD' string from Firestore
   shiftType: ShiftType;
 };
 
@@ -49,7 +54,7 @@ export type ProcessedAttendance = {
     id: string;
     employee_id: string;
     employee_name?: string; // Optional: denormalized for display
-    date: string;
+    date: string; // YYYY-MM-DD
     morning_in: string | null;
     morning_out: string | null;
     afternoon_in: string | null;

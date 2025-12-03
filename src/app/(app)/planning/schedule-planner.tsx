@@ -1,9 +1,9 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { addDays, startOfWeek, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { shifts as initialShifts, employees } from '@/lib/data';
 import type { Shift, Employee, ShiftType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { ShiftEditDialog } from './shift-edit-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirebase, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, where, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 const weekStartsOn = 1; // Monday
 
@@ -25,42 +32,81 @@ const getShiftBadgeVariant = (shiftType: ShiftType) => {
     }
 }
 
+const RowSkeleton = ({ weekDays }: { weekDays: Date[] }) => (
+    <TableRow>
+        <TableCell>
+            <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <div className="space-y-1">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                </div>
+            </div>
+        </TableCell>
+        {weekDays.map(day => <TableCell key={day.toString()}><Skeleton className="h-10 w-full" /></TableCell>)}
+    </TableRow>
+);
+
+
 export function SchedulePlanner() {
-  const [shifts, setShifts] = useState<Shift[]>(initialShifts);
+  const { firestore, user } = useFirebase();
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn, locale: fr });
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
 
+  const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
+  const shiftsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const weekEnd = addDays(weekStart, 6);
+    return query(
+        collection(firestore, 'schedules'), 
+        where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
+        where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
+    );
+  }, [firestore, weekStart]);
+
+  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
+  const { data: shifts, isLoading: shiftsLoading, error: shiftsError } = useCollection<Shift>(shiftsQuery);
+
+
   const getShiftForEmployeeAndDay = (employeeId: string, day: Date): Shift | undefined => {
-    return shifts.find(
+    return shifts?.find(
       (shift) =>
         shift.employeeId === employeeId &&
-        new Date(shift.date).toDateString() === day.toDateString()
+        shift.date && new Date(shift.date).toDateString() === day.toDateString()
     );
   };
   
-  const handleSaveShift = (newShift: Shift) => {
-      setShifts(prev => {
-          const index = prev.findIndex(s => s.id === newShift.id);
-          if (index > -1) {
-              const updated = [...prev];
-              updated[index] = newShift;
-              return updated;
-          }
-          return [...prev, newShift];
-      })
+  const handleSaveShift = (newShiftData: Omit<Shift, 'id'>) => {
+    if (!firestore) return;
+    const scheduleCollection = collection(firestore, 'schedules');
+
+    const existingShift = shifts?.find(s => s.employeeId === newShiftData.employeeId && new Date(s.date).toDateString() === new Date(newShiftData.date).toDateString());
+
+    if (existingShift) {
+        const docRef = doc(firestore, 'schedules', existingShift.id);
+        setDocumentNonBlocking(docRef, { shiftType: newShiftData.shiftType }, { merge: true });
+    } else {
+        addDocumentNonBlocking(scheduleCollection, {
+            ...newShiftData,
+            date: format(newShiftData.date, 'yyyy-MM-dd'),
+        });
+    }
   }
 
   const changeWeek = (direction: 'prev' | 'next') => {
       setCurrentDate(prev => addDays(prev, direction === 'prev' ? -7 : 7));
   }
 
+  const isLoading = employeesLoading || shiftsLoading;
+  const error = employeesError || shiftsError;
+
   return (
     <div className="space-y-4">
         <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold capitalize">
-                Semaine du {format(weekStart, 'd MMMM', { locale: fr })}
+                Semaine du {format(weekStart, 'd MMMM yyyy', { locale: fr })}
             </h2>
             <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={() => changeWeek('prev')}>
@@ -86,42 +132,62 @@ export function SchedulePlanner() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees.map((employee: Employee) => (
-              <TableRow key={employee.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={employee.avatarUrl} alt={employee.name} data-ai-hint="person portrait" />
-                      <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <div className="font-medium">{employee.name}</div>
-                        <div className="text-xs text-muted-foreground">{employee.department}</div>
-                    </div>
-                  </div>
-                </TableCell>
-                {weekDays.map((day) => {
-                  const shift = getShiftForEmployeeAndDay(employee.id, day);
-                  return (
-                    <TableCell key={day.toString()} className="text-center p-2 h-20">
-                      {shift ? (
-                        <ShiftEditDialog shift={shift} date={day} onSave={handleSaveShift}>
-                            <Badge variant={getShiftBadgeVariant(shift.shiftType)} className="cursor-pointer w-full flex justify-center py-1 text-xs">
-                                {shift.shiftType}
-                            </Badge>
-                        </ShiftEditDialog>
-                      ) : (
-                        <ShiftEditDialog shift={null} date={day} employeeId={employee.id} onSave={handleSaveShift}>
-                            <Button variant="ghost" size="icon" className="h-full w-full rounded-md hover:bg-secondary">
-                                <Plus className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                        </ShiftEditDialog>
-                      )}
+            {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => <RowSkeleton key={i} weekDays={weekDays} />)
+            ) : error ? (
+                <TableRow>
+                    <TableCell colSpan={8}>
+                        <Alert variant="destructive" className="m-4">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Erreur de Chargement</AlertTitle>
+                            <AlertDescription>Impossible de charger les données de planification.</AlertDescription>
+                        </Alert>
                     </TableCell>
-                  );
-                })}
-              </TableRow>
-            ))}
+                </TableRow>
+            ) : employees && employees.length > 0 ? (
+                employees.map((employee: Employee) => (
+                <TableRow key={employee.id}>
+                    <TableCell>
+                    <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                        <AvatarImage src={employee.avatarUrl} alt={employee.name} data-ai-hint="person portrait" />
+                        <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <div className="font-medium">{employee.name}</div>
+                            <div className="text-xs text-muted-foreground">{employee.department}</div>
+                        </div>
+                    </div>
+                    </TableCell>
+                    {weekDays.map((day) => {
+                    const shift = getShiftForEmployeeAndDay(employee.id, day);
+                    return (
+                        <TableCell key={day.toString()} className="text-center p-2 h-20">
+                        {shift ? (
+                            <ShiftEditDialog shift={shift} date={day} onSave={handleSaveShift}>
+                                <Badge variant={getShiftBadgeVariant(shift.shiftType)} className="cursor-pointer w-full flex justify-center py-1 text-xs">
+                                    {shift.shiftType}
+                                </Badge>
+                            </ShiftEditDialog>
+                        ) : (
+                            <ShiftEditDialog shift={null} date={day} employeeId={employee.id} onSave={handleSaveShift}>
+                                <Button variant="ghost" size="icon" className="h-full w-full rounded-md hover:bg-secondary">
+                                    <Plus className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                            </ShiftEditDialog>
+                        )}
+                        </TableCell>
+                    );
+                    })}
+                </TableRow>
+                ))
+            ) : (
+                <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center">
+                        Aucun employé trouvé pour la planification.
+                    </TableCell>
+                </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>

@@ -1,12 +1,17 @@
+
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { employees, processedAttendanceData as staticAttendanceData } from "@/lib/data";
 import type { Employee, ProcessedAttendance } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 interface PayrollEntry {
   employeeId: string;
@@ -59,23 +64,46 @@ const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-MG', { style: 'currency', currency: 'MGA', minimumFractionDigits: 0 }).format(value);
 };
 
+const RowSkeleton = () => (
+    <TableRow>
+        <TableCell>
+            <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <div className="space-y-1">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                </div>
+            </div>
+        </TableCell>
+        <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+        <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+        <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+        <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+        <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+    </TableRow>
+);
+
+
 export function PayrollTable() {
-  const [isClient, setIsClient] = useState(false);
+  const { firestore } = useFirebase();
+
+  const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
+  const attendanceQuery = useMemoFirebase(() => {
+      if (!firestore) return null;
+      // This could be optimized to only fetch for the current month.
+      return collection(firestore, 'processedAttendance');
+  }, [firestore]);
+
+  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
+  const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
   
-  // For now, we will continue using static data, but this is structured to easily
-  // switch to live data from Firestore using a hook like useCollection.
-  // const { data: liveAttendance, isLoading: isAttendanceLoading } = useCollection<ProcessedAttendance>(...);
-  const attendanceData = staticAttendanceData;
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   const payrollData = useMemo(() => {
-      // The calculation is memoized. It will only re-run if employees or attendanceData change.
+      if (!employees || !attendanceData) return [];
       return calculatePayroll(employees, attendanceData);
-  }, [attendanceData]);
+  }, [employees, attendanceData]);
 
+  const isLoading = employeesLoading || attendanceLoading;
+  const error = employeesError || attendanceError;
 
   return (
     <div className="rounded-md border">
@@ -91,25 +119,24 @@ export function PayrollTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {!isClient ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <TableRow key={i}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-9 w-9 rounded-full" />
-                    <div className="space-y-1">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-24" />
-                    </div>
-                  </div>
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => <RowSkeleton key={i} />)
+          ) : error ? (
+            <TableRow>
+                <TableCell colSpan={6}>
+                    <Alert variant="destructive" className="m-4">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Erreur de Chargement</AlertTitle>
+                        <AlertDescription>Impossible de charger les données de paie.</AlertDescription>
+                    </Alert>
                 </TableCell>
-                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-              </TableRow>
-            ))
+            </TableRow>
+          ) : payrollData.length === 0 ? (
+             <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                    Aucune donnée de paie à calculer pour le mois en cours.
+                </TableCell>
+            </TableRow>
           ) : (
             payrollData.map((entry) => (
               <TableRow key={entry.employeeId}>

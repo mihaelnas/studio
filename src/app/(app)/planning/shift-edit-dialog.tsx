@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -20,16 +21,18 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { employees } from "@/lib/data";
-import type { Shift, ShiftType } from "@/lib/types";
+import type { Shift, ShiftType, Employee } from "@/lib/types";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { useFirebase, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 interface ShiftEditDialogProps {
   shift: Shift | null;
   date: Date;
   employeeId?: string;
-  onSave: (shift: Shift) => void;
+  onSave: (shift: Omit<Shift, 'id'>) => void;
   children: React.ReactNode;
 }
 
@@ -40,8 +43,12 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
   const [selectedShiftType, setSelectedShiftType] = useState<ShiftType | undefined>(shift?.shiftType);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(employeeId || shift?.employeeId);
   const { toast } = useToast();
+  const { firestore } = useFirebase();
+
+  const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
+  const { data: employees, isLoading: employeesLoading } = useCollection<Employee>(employeesQuery);
   
-  const employee = employees.find(e => e.id === selectedEmployeeId);
+  const employee = employees?.find(e => e.id === selectedEmployeeId);
 
   const handleSave = () => {
     if (!selectedEmployeeId || !selectedShiftType) {
@@ -53,8 +60,7 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
         return;
     }
     
-    const newShift: Shift = {
-        id: shift?.id || new Date().toISOString(),
+    const newShift: Omit<Shift, 'id'> = {
         employeeId: selectedEmployeeId,
         date: date,
         shiftType: selectedShiftType,
@@ -89,13 +95,13 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
             <Select
                 value={selectedEmployeeId}
                 onValueChange={setSelectedEmployeeId}
-                disabled={!!shift}
+                disabled={!!shift || employeesLoading}
             >
                 <SelectTrigger id="employee">
-                    <SelectValue placeholder="Sélectionner l'Employé" />
+                    <SelectValue placeholder={employeesLoading ? "Chargement..." : "Sélectionner l'Employé"} />
                 </SelectTrigger>
                 <SelectContent>
-                    {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                    {employees?.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                 </SelectContent>
             </Select>
             </div>
@@ -107,7 +113,7 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
             <div className="col-span-3">
             <Select value={selectedShiftType} onValueChange={(v) => setSelectedShiftType(v as ShiftType)}>
                 <SelectTrigger id="shift-type">
-                    <SelectValue placeholder="Sélectionner la Garde" />
+                    <SelectValue placeholder="Sélectionter la Garde" />
                 </SelectTrigger>
                 <SelectContent>
                     {shiftTypes.map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
