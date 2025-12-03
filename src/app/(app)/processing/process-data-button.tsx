@@ -9,6 +9,8 @@ import { useFirebase } from "@/firebase";
 import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
 import type { AttendanceLog, ProcessedAttendance } from "@/lib/types";
 import { format, parse } from 'date-fns';
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export function ProcessDataButton() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -23,8 +25,10 @@ export function ProcessDataButton() {
     setIsProcessing(true);
     toast({ title: "Début du traitement...", description: "Veuillez patienter." });
 
-    try {
-        const logsSnapshot = await getDocs(collection(firestore, "attendanceLogs"));
+    const attendanceLogsCollection = collection(firestore, "attendanceLogs");
+
+    getDocs(attendanceLogsCollection)
+      .then(async (logsSnapshot) => {
         const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog));
 
         if (logs.length === 0) {
@@ -36,19 +40,21 @@ export function ProcessDataButton() {
         const groupedByEmployeeAndDay: { [key: string]: AttendanceLog[] } = {};
 
         logs.forEach(log => {
-            // Ignore header row from logs
             if (log.personnelId.trim() === 'Personnel ID' || !log.dateTime) return;
             
-            if (!log.dateTime.trim() || !log.personnelId.trim()) return;
-            const logDate = parse(log.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date());
+            const trimmedDateTime = log.dateTime?.trim();
+            const trimmedPersonnelId = log.personnelId?.trim();
+
+            if (!trimmedDateTime || !trimmedPersonnelId) return;
+            const logDate = parse(trimmedDateTime, "yyyy-MM-dd HH:mm:ss", new Date());
 
             if (isNaN(logDate.getTime())) {
                 console.warn(`Invalid date format for log entry: ${log.id}, dateTime: ${log.dateTime}`);
-                return; // Skip this invalid log
+                return;
             }
 
             const dayKey = format(logDate, 'yyyy-MM-dd');
-            const key = `${log.personnelId.trim()}-${dayKey}`;
+            const key = `${trimmedPersonnelId}-${dayKey}`;
             if (!groupedByEmployeeAndDay[key]) {
                 groupedByEmployeeAndDay[key] = [];
             }
@@ -60,7 +66,7 @@ export function ProcessDataButton() {
 
         for (const key in groupedByEmployeeAndDay) {
             const dayLogs = groupedByEmployeeAndDay[key].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
-            const employeeId = dayLogs[0].personnelId;
+            const employeeId = dayLogs[0].personnelId.trim();
             const date = format(new Date(dayLogs[0].dateTime.trim()), 'yyyy-MM-dd');
 
             const checkIns = dayLogs.filter(l => l.inOutStatus.trim() === 'Check-In');
@@ -83,7 +89,6 @@ export function ProcessDataButton() {
             const afternoonCheckIns = checkIns.filter(l => new Date(l.dateTime.trim()) > middayCutoff);
             if(afternoonCheckIns.length > 0) afternoon_in = new Date(afternoonCheckIns[0].dateTime.trim());
             
-            // Refine logic: if only two punches, it's likely morning in and afternoon out
             if(dayLogs.length === 2 && checkIns.length === 1 && checkOuts.length === 1) {
                 morning_out = null;
                 afternoon_in = null;
@@ -103,40 +108,56 @@ export function ProcessDataButton() {
             const total_worked_hours = totalWorkedMs > 0 ? totalWorkedMs / (1000 * 60 * 60) : 0;
             
             const processedDoc: Omit<ProcessedAttendance, 'id'> = {
-                employee_id: employeeId.trim(),
+                employee_id: employeeId,
                 date,
                 morning_in: morning_in ? format(morning_in, 'HH:mm') : null,
                 morning_out: morning_out ? format(morning_out, 'HH:mm') : null,
                 afternoon_in: afternoon_in ? format(afternoon_in, 'HH:mm') : null,
                 afternoon_out: afternoon_out ? format(afternoon_out, 'HH:mm') : null,
                 total_worked_hours: total_worked_hours,
-                total_late_minutes: 0, // Placeholder
-                total_overtime_minutes: 0, // Placeholder
-                is_leave: false, // Placeholder
-                leave_type: null, // Placeholder
+                total_late_minutes: 0,
+                total_overtime_minutes: 0,
+                is_leave: false,
+                leave_type: null,
             };
             
-            const docRef = collection(firestore, "processedAttendance");
-            batch.set(doc(docRef, key), processedDoc, { merge: true });
+            const docRef = doc(firestore, "processedAttendance", key);
+            batch.set(docRef, processedDoc, { merge: true });
             processedCount++;
         }
 
-        await batch.commit();
+        await batch.commit().catch(error => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: '/processedAttendance (batch write)',
+                operation: 'write',
+            }));
+            throw error; // Re-throw to be caught by the final catch block
+        });
 
         toast({
             title: "Traitement Terminé",
             description: `${processedCount} enregistrements de présence quotidiens ont été créés ou mis à jour.`,
         });
-    } catch (error) {
-        console.error("Error processing data: ", error);
+
+      })
+      .catch(error => {
+        // This will catch the re-thrown error from batch.commit, or the initial getDocs error
+        if (error.name !== 'FirebaseError') {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: 'attendanceLogs',
+                operation: 'list',
+            }));
+        }
+        
         toast({
             variant: "destructive",
             title: "Échec du traitement",
-            description: "Une erreur est survenue. Vérifiez la console pour plus de détails.",
+            description: "Une erreur de permission est survenue. Vérifiez la console pour plus de détails.",
         });
-    } finally {
+      })
+      .finally(() => {
         setIsProcessing(false);
-    }
+      });
   };
 
 
