@@ -143,7 +143,7 @@ export function CorrectionForm() {
                 <FormItem><FormLabel>Afternoon In</FormLabel><FormControl><Input placeholder="13:00" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="afternoonOut" render={({ field }) => (
-                <FormItem><FormLabel>Afternoon Out</FormLabel><FormControl><Input placeholder="17:00" {...field} /></FormControl><FormMessage /></FormMessage>
+                <FormItem><FormLabel>Afternoon Out</FormLabel><FormControl><Input placeholder="17:00" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
         </div>
 
