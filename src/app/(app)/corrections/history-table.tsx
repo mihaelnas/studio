@@ -55,12 +55,15 @@ export function HistoryTable() {
         const jsDate = (c.timestamp as Timestamp).toDate();
         timestampStr = `${format(jsDate, "PPP", { locale: fr })} à ${format(jsDate, "p", { locale: fr })}`;
       }
+      
+      const adminName = correctedByUser?.name || 'Admin';
 
       return {
         ...c,
         employeeName: employee?.name || 'Inconnu',
-        adminName: correctedByUser?.name || 'Admin',
-        adminAvatarUrl: correctedByUser?.avatarUrl || `https://picsum.photos/seed/${c.correctedBy}/100/100`,
+        adminName: adminName,
+        adminAvatarUrl: correctedByUser?.avatarUrl,
+        adminInitials: adminName.split(' ').map(n => n[0]).join(''),
         timestamp: timestampStr,
         date: c.correctionDate ? format(new Date(c.correctionDate), "PPP", { locale: fr }) : 'N/A',
       };
@@ -107,7 +110,7 @@ export function HistoryTable() {
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={correction.adminAvatarUrl} alt={correction.adminName} data-ai-hint="person portrait" />
-                      <AvatarFallback>{correction.adminName.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{correction.adminInitials}</AvatarFallback>
                     </Avatar>
                     <span className="font-medium">{correction.adminName}</span>
                   </div>

@@ -25,20 +25,16 @@ export function ProcessDataButton() {
     setIsProcessing(true);
     toast({ title: "Début du traitement...", description: "Veuillez patienter." });
 
-    const attendanceLogsCollection = collection(firestore, "attendanceLogs");
-    const employeesCollection = collection(firestore, "employees");
-
-    const logsPromise = getDocs(attendanceLogsCollection).catch(error => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'attendanceLogs', operation: 'list' }));
-      throw error; // Re-throw to stop Promise.all
-    });
-    const employeesPromise = getDocs(employeesCollection).catch(error => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'employees', operation: 'list' }));
-        throw error;
-    });
-
     try {
-        const [logsSnapshot, employeesSnapshot] = await Promise.all([logsPromise, employeesPromise]);
+        const logsSnapshot = await getDocs(collection(firestore, "attendanceLogs")).catch(error => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'attendanceLogs', operation: 'list' }));
+            throw error;
+        });
+
+        const employeesSnapshot = await getDocs(collection(firestore, "employees")).catch(error => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'employees', operation: 'list' }));
+            throw error;
+        });
 
         const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog));
         const existingEmployees = new Set(employeesSnapshot.docs.map(doc => doc.id));
@@ -67,7 +63,6 @@ export function ProcessDataButton() {
                     name: `${log.firstName?.trim() || ''} ${log.lastName?.trim() || ''}`.trim(),
                     email: `${(log.firstName?.trim() || '').toLowerCase()}.${(log.lastName?.trim() || 'user').toLowerCase()}@miaraka.mg`, // Dummy email
                     department: 'Non assigné', // Default department
-                    avatarUrl: `https://picsum.photos/seed/${trimmedPersonnelId}/100/100`,
                 });
             }
 
@@ -164,7 +159,6 @@ export function ProcessDataButton() {
                 path: '/processedAttendance (batch write)',
                 operation: 'write',
             }));
-            // We don't re-throw here because we want to show our own toast.
         });
 
         let toastMessage = `${processedCount} enregistrements de présence ont été traités.`;
@@ -182,7 +176,7 @@ export function ProcessDataButton() {
         toast({
             variant: "destructive",
             title: "Échec du traitement",
-            description: "Une erreur de permission est survenue lors de la lecture des données. Vérifiez la console pour plus de détails.",
+            description: "Une erreur de permission est survenue lors de la lecture ou de l'écriture des données. Vérifiez la console pour plus de détails.",
         });
     } finally {
         setIsProcessing(false);

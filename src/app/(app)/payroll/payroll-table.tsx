@@ -16,7 +16,7 @@ import { AlertTriangle } from 'lucide-react';
 interface PayrollEntry {
   employeeId: string;
   name: string;
-  avatarUrl: string;
+  avatarUrl?: string;
   department: string;
   email: string;
   hourlyRate: number;
@@ -143,7 +143,7 @@ export function PayrollTable() {
                 <TableCell>
                   <Link href={`/employees/${entry.employeeId}`} className="flex items-center gap-3 hover:underline">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={entry.avatarUrl} alt={entry.name} data-ai-hint="person portrait" />
+                      <AvatarImage src={entry.avatarUrl} alt={entry.name} />
                       <AvatarFallback>{entry.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                     <div>
