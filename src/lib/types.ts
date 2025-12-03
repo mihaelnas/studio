@@ -1,3 +1,5 @@
+import type { Timestamp } from 'firebase/firestore';
+
 export type Employee = {
   id: string;
   name: string;
@@ -39,4 +41,7 @@ export type AttendanceLog = {
     inOutStatus: 'Check-In' | 'Check-Out';
     eventDescription: string;
     remarks: string;
+    createdAt: Timestamp;
 }
+
+    

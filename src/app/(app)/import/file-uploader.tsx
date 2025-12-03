@@ -6,12 +6,18 @@ import { UploadCloud, FileText, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useFirebase } from "@/firebase";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, serverTimestamp } from "firebase/firestore";
+import type { AttendanceLog } from "@/lib/types";
 
 export function FileUploader() {
+  const { firestore } = useFirebase();
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles && acceptedFiles.length > 0) {
@@ -34,31 +40,65 @@ export function FileUploader() {
   });
     
   const handleUpload = () => {
-    if (!file) return;
+    if (!file || !firestore) return;
     setStatus("uploading");
     setProgress(0);
 
-    // Simulate file upload
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 95) {
-          return prev;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      const lines = content.split('\n').filter(line => line.trim() !== '');
+      const totalLines = lines.length;
+      let processedLines = 0;
+      let errorCount = 0;
+
+      const attendanceLogsCollection = collection(firestore, "attendanceLogs");
+
+      for (const line of lines) {
+        // Assuming the file is tab-separated as is common with ZK devices
+        const parts = line.split('\t');
+        if (parts.length >= 9) { // Check for minimum required parts
+            try {
+                const logData: Partial<AttendanceLog> = {
+                    dateTime: parts[0],
+                    personnelId: parts[1],
+                    firstName: parts[2] || '',
+                    lastName: parts[3] || '',
+                    cardNumber: parts[4] || '',
+                    deviceName: parts[5] || 'Unknown',
+                    eventPoint: parts[6] || 'Unknown',
+                    verifyType: parts[7] || 'Unknown',
+                    inOutStatus: parts[8] as any || 'Unknown',
+                    eventDescription: parts[9] || '',
+                    remarks: parts[10] || '',
+                    createdAt: serverTimestamp() as any, // For ordering
+                };
+
+                await addDocumentNonBlocking(attendanceLogsCollection, logData);
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                errorCount++;
+            }
+        } else {
+            errorCount++;
         }
-        return prev + 10;
-      });
-    }, 200);
-    
-    setTimeout(() => {
-      clearInterval(interval);
-      setProgress(100);
-      // Simulate a random error
-      if (Math.random() > 0.8) {
-          setStatus("error");
-          setErrorMessage("Une erreur inattendue s'est produite lors du traitement. Le fichier de log pourrait être corrompu.");
-      } else {
-          setStatus("success");
+        processedLines++;
+        setProgress(Math.round((processedLines / totalLines) * 100));
       }
-    }, 2500);
+      
+      if (errorCount > 0) {
+        setStatus("error");
+        setErrorMessage(`Importation terminée avec ${errorCount} erreur(s) sur ${totalLines} lignes.`);
+      } else {
+        setStatus("success");
+        setSuccessMessage(`Succès : ${totalLines} pointages traités, 0 erreur. Les registres de présence ont été mis à jour.`);
+      }
+    };
+    reader.onerror = () => {
+        setStatus("error");
+        setErrorMessage("Impossible de lire le fichier.");
+    }
+    reader.readAsText(file);
   };
   
   const handleRemoveFile = () => {
@@ -66,6 +106,7 @@ export function FileUploader() {
       setStatus('idle');
       setProgress(0);
       setErrorMessage('');
+      setSuccessMessage('');
   }
 
   return (
@@ -118,7 +159,7 @@ export function FileUploader() {
         <Alert variant="default" className="bg-green-50 border-green-200">
           <AlertTitle className="text-green-800">Importation Réussie !</AlertTitle>
           <AlertDescription className="text-green-700">
-            Succès : 150 pointages traités, 0 erreur. Les registres de présence ont été mis à jour.
+            {successMessage}
           </AlertDescription>
         </Alert>
       )}
@@ -128,12 +169,11 @@ export function FileUploader() {
           <AlertTitle>Échec de l'Importation</AlertTitle>
           <AlertDescription>
             <p>{errorMessage}</p>
-            {errorMessage.includes("corrompu") && (
-                <pre className="mt-2 p-2 bg-destructive/10 rounded-md font-code text-xs"><code>Erreur à la ligne 42: Format de l'heure invalide '25:70'</code></pre>
-            )}
           </AlertDescription>
         </Alert>
       )}
     </div>
   );
 }
+
+    

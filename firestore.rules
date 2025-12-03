@@ -169,5 +169,18 @@ service cloud.firestore {
       allow update: if isHR() && resource != null;
       allow delete: if isHR() && resource != null;
     }
+
+    /**
+     * @description Rules for raw attendance logs, intended for real-time display and analysis.
+     * @path /attendanceLogs/{logId}
+     * @allow Authenticated users can read the logs for real-time updates and analysis `(get, list)`.
+     * @deny Writes are restricted to HR to ensure data integrity `(create, update, delete)`.
+     * @principle Allows broad read access for transparency while centralizing data entry control.
+     */
+    match /attendanceLogs/{logId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isHR();
+    }
   }
 }
+    
