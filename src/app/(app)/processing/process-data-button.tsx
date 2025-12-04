@@ -8,9 +8,10 @@ import { Loader, Cog } from "lucide-react";
 import { useFirebase } from "@/firebase";
 import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
 import type { AttendanceLog, ProcessedAttendance, Employee } from "@/lib/types";
-import { format, parse } from 'date-fns';
+import { format, parse, isValid, startOfDay, endOfDay } from 'date-fns';
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export function ProcessDataButton() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -54,22 +55,22 @@ export function ProcessDataButton() {
             
             const trimmedDateTime = log.dateTime?.trim();
             if (!trimmedDateTime) return;
+            
+            const logDate = parse(trimmedDateTime, "yyyy-MM-dd HH:mm:ss", new Date());
+            if (!isValid(logDate)) {
+                 console.warn(`Invalid date format for log entry: ${log.id}, dateTime: ${log.dateTime}`);
+                return;
+            }
 
-            // Add to employees to create if not existing
             if (!existingEmployees.has(trimmedPersonnelId) && !employeesToCreate.has(trimmedPersonnelId)) {
+                const randomAvatar = PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)];
                 employeesToCreate.set(trimmedPersonnelId, {
                     id: trimmedPersonnelId,
                     name: `${log.firstName?.trim() || ''} ${log.lastName?.trim() || ''}`.trim(),
-                    email: `${(log.firstName?.trim() || '').toLowerCase()}.${(log.lastName?.trim() || 'user').toLowerCase()}@miaraka.mg`, // Dummy email
-                    department: 'Non assigné', // Default department
+                    email: `${(log.firstName?.trim() || 'user').toLowerCase()}.${(log.lastName?.trim() || 'name').toLowerCase()}@miaraka.mg`, // Dummy email
+                    department: 'Non assigné',
+                    avatarUrl: randomAvatar.imageUrl,
                 });
-            }
-
-            const logDate = parse(trimmedDateTime, "yyyy-MM-dd HH:mm:ss", new Date());
-
-            if (isNaN(logDate.getTime())) {
-                console.warn(`Invalid date format for log entry: ${log.id}, dateTime: ${log.dateTime}`);
-                return;
             }
 
             const dayKey = format(logDate, 'yyyy-MM-dd');
@@ -83,7 +84,6 @@ export function ProcessDataButton() {
         const batch = writeBatch(firestore);
         let processedCount = 0;
 
-        // Add new employees to the batch
         employeesToCreate.forEach((employeeData, employeeId) => {
             const employeeDocRef = doc(firestore, "employees", employeeId);
             batch.set(employeeDocRef, employeeData);
@@ -92,85 +92,62 @@ export function ProcessDataButton() {
         for (const key in groupedByEmployeeAndDay) {
             const dayLogs = groupedByEmployeeAndDay[key].sort((a, b) => new Date(a.dateTime.trim()).getTime() - new Date(b.dateTime.trim()).getTime());
             const employeeId = dayLogs[0].personnelId.trim();
-            const date = format(new Date(dayLogs[0].dateTime.trim()), 'yyyy-MM-dd');
+            const date = format(parse(dayLogs[0].dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()), 'yyyy-MM-dd');
 
-            let morning_in: Date | null = null;
-            let morning_out: Date | null = null;
-            let afternoon_in: Date | null = null;
-            let afternoon_out: Date | null = null;
-            
-            let totalWorkedMs = 0;
-            let totalLateMinutes = 0;
-            let totalOvertimeMinutes = 0;
+            let checkIns: Date[] = [];
+            let checkOuts: Date[] = [];
 
-            const standardMorningIn = parse(`${date} 08:00:00`, "yyyy-MM-dd HH:mm:ss", new Date());
-            const standardMorningOut = parse(`${date} 12:00:00`, "yyyy-MM-dd HH:mm:ss", new Date());
-            const standardAfternoonIn = parse(`${date} 14:00:00`, "yyyy-MM-dd HH:mm:ss", new Date());
-            const standardAfternoonOut = parse(`${date} 17:00:00`, "yyyy-MM-dd HH:mm:ss", new Date());
-            
-            // Find first morning check-in
-            const firstCheckIn = dayLogs.find(l => l.inOutStatus.trim() === 'Check-In');
-            if (firstCheckIn) {
-                morning_in = parse(firstCheckIn.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date());
-                const lateness = (morning_in.getTime() - standardMorningIn.getTime()) / (1000 * 60);
-                if (lateness > 0) totalLateMinutes += lateness;
-            }
-
-            // Find last afternoon check-out
-            const reversedLogs = [...dayLogs].reverse();
-            const lastCheckOut = reversedLogs.find(l => l.inOutStatus.trim() === 'Check-Out');
-             if (lastCheckOut) {
-                afternoon_out = parse(lastCheckOut.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date());
-             }
-
-            // Find check-in/out pairs
-            let lastCheckInTime: Date | null = null;
             dayLogs.forEach(log => {
                 const logTime = parse(log.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date());
                 if (log.inOutStatus.trim() === 'Check-In') {
-                    if (!lastCheckInTime) {
-                        lastCheckInTime = logTime;
-                    }
-                    // Handle afternoon check-in lateness
-                    if (logTime > standardMorningOut && logTime < standardAfternoonOut) { // It's an afternoon check-in
-                        const afternoonLateness = (logTime.getTime() - standardAfternoonIn.getTime()) / (1000 * 60);
-                        if (afternoonLateness > 0 && !afternoon_in) { // Only add lateness for the first afternoon checkin
-                            totalLateMinutes += afternoonLateness;
-                            afternoon_in = logTime;
-                        }
-                    }
-                } else if (log.inOutStatus.trim() === 'Check-Out' && lastCheckInTime) {
-                    totalWorkedMs += logTime.getTime() - lastCheckInTime.getTime();
-                    
-                    // Handle overtime
-                    if (logTime > standardMorningOut && lastCheckInTime < standardMorningOut) { // Morning overtime
-                        const overtime = (logTime.getTime() - standardMorningOut.getTime()) / (1000 * 60);
-                        if (overtime > 0) totalOvertimeMinutes += overtime;
-                    }
-                    if (logTime > standardAfternoonOut) { // Afternoon overtime
-                        const overtime = (logTime.getTime() - standardAfternoonOut.getTime()) / (1000 * 60);
-                        if (overtime > 0) totalOvertimeMinutes += overtime;
-                    }
+                    checkIns.push(logTime);
+                } else if (log.inOutStatus.trim() === 'Check-Out') {
+                    checkOuts.push(logTime);
+                }
+            });
 
-                    if (logTime < standardAfternoonIn) morning_out = logTime;
-                    if (logTime > standardAfternoonIn) afternoon_out = logTime;
+            let totalWorkedMs = 0;
+            let lastCheckIn: Date | null = null;
 
-                    lastCheckInTime = null; // Reset for next pair
+            const allEvents = [...dayLogs.map(l => ({ time: parse(l.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()), type: l.inOutStatus.trim() }))].sort((a,b) => a.time.getTime() - b.time.getTime());
+
+            allEvents.forEach(event => {
+                if (event.type === 'Check-In') {
+                    lastCheckIn = event.time;
+                } else if (event.type === 'Check-Out' && lastCheckIn) {
+                    totalWorkedMs += event.time.getTime() - lastCheckIn.getTime();
+                    lastCheckIn = null;
                 }
             });
 
             const total_worked_hours = totalWorkedMs > 0 ? totalWorkedMs / (1000 * 60 * 60) : 0;
+
+            const noon = parse(`${date} 13:00:00`, "yyyy-MM-dd HH:mm:ss", new Date());
+            const morningIn = checkIns.find(ci => ci < noon);
+            const morningOut = checkOuts.find(co => co < noon);
+            const afternoonIn = checkIns.find(ci => ci >= noon);
+            const afternoonOut = checkOuts.sort((a,b) => b.getTime() - a.getTime()).find(co => co >= noon);
+            
+            let totalLateMinutes = 0;
+            const standardMorningIn = parse(`${date} 08:00:00`, "yyyy-MM-dd HH:mm:ss", new Date());
+            if (morningIn && morningIn > standardMorningIn) {
+                totalLateMinutes += (morningIn.getTime() - standardMorningIn.getTime()) / (1000 * 60);
+            }
+            const standardAfternoonIn = parse(`${date} 14:00:00`, "yyyy-MM-dd HH:mm:ss", new Date());
+            if(afternoonIn && afternoonIn > standardAfternoonIn) {
+                 totalLateMinutes += (afternoonIn.getTime() - standardAfternoonIn.getTime()) / (1000 * 60);
+            }
             
             const processedDoc: Omit<ProcessedAttendance, 'id'> = {
                 employee_id: employeeId,
                 date,
-                morning_in: morning_in ? format(morning_in, 'HH:mm') : null,
-                morning_out: morning_out ? format(morning_out, 'HH:mm') : null,
-                afternoon_in: afternoon_in ? format(afternoon_in, 'HH:mm') : null,
-                afternoon_out: afternoon_out ? format(afternoon_out, 'HH:mm') : null,
-                total_worked_hours: total_worked_hours,
-                total_late_minutes: Math.round(totalLateMinutes),
-                total_overtime_minutes: Math.round(totalOvertimeMinutes),
+                morning_in: morningIn ? format(morningIn, 'HH:mm') : null,
+                morning_out: morningOut ? format(morningOut, 'HH:mm') : null,
+                afternoon_in: afternoonIn ? format(afternoonIn, 'HH:mm') : null,
+                afternoon_out: afternoonOut ? format(afternoonOut, 'HH:mm') : null,
+                total_worked_hours,
+                total_late_minutes: Math.max(0, Math.round(totalLateMinutes)),
+                total_overtime_minutes: Math.max(0, Math.round(((total_worked_hours - 8) * 60))),
                 is_leave: false,
                 leave_type: null,
             };
@@ -186,6 +163,7 @@ export function ProcessDataButton() {
                 path: '/processedAttendance (batch write)',
                 operation: 'write',
             }));
+            throw error;
         });
 
         let toastMessage = `${processedCount} enregistrements de présence ont été traités.`;
@@ -199,9 +177,6 @@ export function ProcessDataButton() {
         });
 
     } catch (error: any) {
-        // Errors are now emitted and will be caught by the global error handler
-        // but we keep this catch block to prevent unhandled promise rejections
-        // and to give a generic feedback to the user.
         console.error("Processing error:", error);
         toast({
             variant: "destructive",
@@ -225,6 +200,3 @@ export function ProcessDataButton() {
     </Button>
   );
 }
-
-    
-    

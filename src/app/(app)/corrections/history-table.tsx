@@ -46,9 +46,11 @@ export function HistoryTable() {
 
   const formattedData = useMemo(() => {
     if (!corrections || !employees) return [];
+    const employeeMap = new Map(employees.map(e => [e.id, e]));
+
     return corrections.map(c => {
-      const employee = employees.find(e => e.id === c.employeeId);
-      const correctedByUser = employees.find(e => e.id === c.correctedBy); // Assuming admins are also in employees collection
+      const employee = employeeMap.get(c.employeeId);
+      const correctedByUser = employeeMap.get(c.correctedBy);
       
       let timestampStr = "Date inconnue";
       if (c.timestamp) {
@@ -109,7 +111,7 @@ export function HistoryTable() {
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
-                      
+                      <AvatarImage src={correction.adminAvatarUrl} alt={correction.adminName} />
                       <AvatarFallback>{correction.adminInitials}</AvatarFallback>
                     </Avatar>
                     <span className="font-medium">{correction.adminName}</span>

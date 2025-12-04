@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +22,11 @@ import { collection } from 'firebase/firestore';
 import type { Employee, ProcessedAttendance } from '@/lib/types';
 import type { PredictLatenessRiskOutput } from '@/ai/flows/predict-lateness-risk';
 import { Skeleton } from '@/components/ui/skeleton';
+
+type ActiveAnalysis = {
+    type: 'predict' | 'explain';
+    content: string;
+} | null;
 
 const getRiskBadgeVariant = (risk?: 'Élevé' | 'Moyen' | 'Faible') => {
     switch (risk) {
@@ -52,7 +57,7 @@ const RowSkeleton = () => (
 
 export function LatenessRiskTable() {
     const { firestore } = useFirebase();
-    const [explanations, setExplanations] = useState<{ [key: string]: string | null }>({});
+    const [activeAnalysis, setActiveAnalysis] = useState<{ [key: string]: ActiveAnalysis }>({});
     const [predictions, setPredictions] = useState<{ [key: string]: PredictLatenessRiskOutput | null }>({});
     const [loading, setLoading] = useState<{ [key: string]: 'explain' | 'predict' | false }>({});
 
@@ -65,21 +70,24 @@ export function LatenessRiskTable() {
 
     const handleExplainClick = async (employeeId: string) => {
         setLoading(prev => ({ ...prev, [employeeId]: 'explain' }));
-        setExplanations(prev => ({ ...prev, [employeeId]: null }));
+        setActiveAnalysis(prev => ({ ...prev, [employeeId]: null }));
 
         const result = await getLatenessExplanation(employeeId);
         
-        setExplanations(prev => ({ ...prev, [employeeId]: result }));
+        setActiveAnalysis(prev => ({ ...prev, [employeeId]: { type: 'explain', content: result } }));
         setLoading(prev => ({ ...prev, [employeeId]: false }));
     }
 
     const handlePredictClick = async (employeeId: string) => {
         setLoading(prev => ({ ...prev, [employeeId]: 'predict' }));
         setPredictions(prev => ({...prev, [employeeId]: null}));
+        setActiveAnalysis(prev => ({ ...prev, [employeeId]: null }));
 
         const employeeAttendance = attendanceData?.filter(att => att.employee_id === employeeId);
         if (!employeeAttendance || employeeAttendance.length === 0) {
-            setPredictions(prev => ({ ...prev, [employeeId]: { riskLevel: 'Faible', reason: "Aucune donnée de présence pour l'analyse." } }));
+            const result = { riskLevel: 'Faible' as const, reason: "Aucune donnée de présence pour l'analyse." };
+            setPredictions(prev => ({ ...prev, [employeeId]: result }));
+            setActiveAnalysis(prev => ({ ...prev, [employeeId]: { type: 'predict', content: result.reason } }));
             setLoading(prev => ({ ...prev, [employeeId]: false }));
             return;
         }
@@ -88,7 +96,10 @@ export function LatenessRiskTable() {
 
         const result = await getLatenessPrediction(csvData);
 
-        setPredictions(prev => ({ ...prev, [employeeId]: result }));
+        if (result) {
+            setPredictions(prev => ({ ...prev, [employeeId]: result }));
+            setActiveAnalysis(prev => ({ ...prev, [employeeId]: { type: 'predict', content: result.reason } }));
+        }
         setLoading(prev => ({ ...prev, [employeeId]: false }));
     }
     
@@ -124,15 +135,15 @@ export function LatenessRiskTable() {
                 employees.map((employee) => {
                     const prediction = predictions[employee.id];
                     const risk = prediction?.riskLevel || employee.latenessRisk;
-                    const reason = prediction?.reason;
+                    const analysis = activeAnalysis[employee.id];
                     return (
                     <React.Fragment key={employee.id}>
                         <TableRow>
                             <TableCell>
                             <Link href={`/employees/${employee.id}`} className="flex items-center gap-3 hover:underline">
                                 <Avatar className="h-9 w-9">
-                                
-                                <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                  <AvatarImage src={employee.avatarUrl} alt={employee.name} />
+                                  <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                 </Avatar>
                                 <span className="font-medium">{employee.name}</span>
                             </Link>
@@ -188,25 +199,13 @@ export function LatenessRiskTable() {
                             </TooltipProvider>
                             </TableCell>
                         </TableRow>
-                        {(explanations[employee.id] && loading[employee.id] !== 'explain') && (
-                            <TableRow>
-                                <TableCell colSpan={4} className="p-0">
-                                    <Alert className="border-l-0 border-r-0 border-t-0 rounded-none bg-secondary/50">
-                                        <AlertTitle className="font-semibold">Analyse de l'IA (Explication)</AlertTitle>
-                                        <AlertDescription>
-                                            {explanations[employee.id]}
-                                        </AlertDescription>
-                                    </Alert>
-                                </TableCell>
-                            </TableRow>
-                        )}
-                        {(reason && loading[employee.id] !== 'predict') && (
+                        {(analysis && loading[employee.id] === false) && (
                              <TableRow>
                                 <TableCell colSpan={4} className="p-0">
-                                    <Alert variant="accent" className="border-l-0 border-r-0 border-t-0 rounded-none bg-accent/50">
-                                        <AlertTitle className="font-semibold">Analyse de l'IA (Prédiction)</AlertTitle>
+                                    <Alert variant={analysis.type === 'predict' ? "accent" : "default"} className="border-l-0 border-r-0 border-t-0 rounded-none bg-opacity-50">
+                                        <AlertTitle className="font-semibold">Analyse de l'IA ({analysis.type === 'predict' ? 'Prédiction' : 'Explication'})</AlertTitle>
                                         <AlertDescription>
-                                            {reason}
+                                            {analysis.content}
                                         </AlertDescription>
                                     </Alert>
                                 </TableCell>

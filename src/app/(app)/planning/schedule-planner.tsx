@@ -12,8 +12,8 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { ShiftEditDialog } from './shift-edit-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirebase, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { useFirebase, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -49,7 +49,7 @@ const RowSkeleton = ({ weekDays }: { weekDays: Date[] }) => (
 
 
 export function SchedulePlanner() {
-  const { firestore, user } = useFirebase();
+  const { firestore } = useFirebase();
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn, locale: fr }), [currentDate]);
@@ -90,7 +90,7 @@ export function SchedulePlanner() {
     } else {
         addDocumentNonBlocking(scheduleCollection, {
             ...newShiftData,
-            date: format(newShiftData.date, 'yyyy-MM-dd'),
+            date: format(newShiftData.date as Date, 'yyyy-MM-dd'),
         });
     }
   }
@@ -150,8 +150,8 @@ export function SchedulePlanner() {
                     <TableCell>
                     <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
-                        
-                        <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          <AvatarImage src={employee.avatarUrl} alt={employee.name} />
+                          <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                         </Avatar>
                         <div>
                             <div className="font-medium">{employee.name}</div>

@@ -3,9 +3,9 @@
 
 import { notFound, useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ProcessedAttendanceTable } from '@/app/(app)/analyses/processed-attendance-table';
+import { ProcessedAttendanceTable } from '@/app/(app)/analyses/processed-attendance-table-filtered';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -96,6 +96,7 @@ export default function EmployeeProfilePage() {
         <CardHeader className="flex flex-row items-start justify-between">
             <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20 border">
+                    <AvatarImage src={employee.avatarUrl} alt={employee.name} />
                     <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                 </Avatar>
                 <div className="grid gap-1">

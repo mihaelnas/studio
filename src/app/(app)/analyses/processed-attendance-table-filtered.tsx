@@ -1,17 +1,21 @@
 
 "use client";
 
-import Link from 'next/link';
 import { useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { ProcessedAttendance, Employee } from "@/lib/types";
+import type { ProcessedAttendance } from "@/lib/types";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
+
+interface FilteredTableProps {
+  employeeId: string;
+}
 
 const TimeCell = ({ time }: { time: string | null }) => (
     <TableCell className="text-center">{time || 'N/A'}</TableCell>
@@ -25,11 +29,8 @@ const MinuteCell = ({ value, positiveColor = "text-amber-600", destructiveColor 
     return <span className="text-green-600">0 min</span>;
 }
 
-type EmployeeForTable = { id: string; name: string; department: string };
-
 const RowSkeleton = () => (
     <TableRow>
-        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
         <TableCell><Skeleton className="h-5 w-24" /></TableCell>
         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
@@ -43,35 +44,19 @@ const RowSkeleton = () => (
 );
 
 
-export function ProcessedAttendanceTable() {
+export function ProcessedAttendanceTable({ employeeId }: FilteredTableProps) {
   const { firestore } = useFirebase();
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'processedAttendance'), orderBy('date', 'desc'));
-  }, [firestore]);
+    return query(
+        collection(firestore, 'processedAttendance'), 
+        where('employee_id', '==', employeeId),
+        orderBy('date', 'desc')
+    );
+  }, [firestore, employeeId]);
   
-  const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
-  
-  const employeesQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'employees')) : null, 
-    [firestore]
-  );
-  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<EmployeeForTable>(employeesQuery);
-
-  const data = useMemo(() => {
-    if (!attendanceData || !employees) return [];
-    const employeeMap = new Map(employees.map(e => [e.id, e.name]));
-    
-    return attendanceData.map(record => ({
-        ...record,
-        employee_name: employeeMap.get(record.employee_id) || record.employee_id,
-    }));
-
-  }, [attendanceData, employees]);
-
-  const isLoading = attendanceLoading || employeesLoading;
-  const error = attendanceError || employeesError;
+  const { data, isLoading, error } = useCollection<ProcessedAttendance>(attendanceQuery);
 
   const showNoDataMessage = !isLoading && !error && (!data || data.length === 0);
 
@@ -80,7 +65,6 @@ export function ProcessedAttendanceTable() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Employé</TableHead>
             <TableHead>Date</TableHead>
             <TableHead className="text-center">Arrivée Matin</TableHead>
             <TableHead className="text-center">Départ Matin</TableHead>
@@ -94,31 +78,26 @@ export function ProcessedAttendanceTable() {
         </TableHeader>
         <TableBody>
             {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => <RowSkeleton key={i} />)
+                Array.from({ length: 3 }).map((_, i) => <RowSkeleton key={i} />)
             ) : error ? (
                 <TableRow>
-                    <TableCell colSpan={10}>
+                    <TableCell colSpan={9}>
                         <Alert variant="destructive" className="m-4">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertTitle>Erreur de Chargement</AlertTitle>
-                            <AlertDescription>Impossible de charger les données de présence. Vérifiez les permissions de la console et les règles de sécurité Firestore.</AlertDescription>
+                            <AlertDescription>Impossible de charger l'historique des présences.</AlertDescription>
                         </Alert>
                     </TableCell>
                 </TableRow>
             ) : showNoDataMessage ? (
                 <TableRow>
-                    <TableCell colSpan={10} className="h-24 text-center">
-                    Aucune donnée de présence traitée n'a été trouvée.
+                    <TableCell colSpan={9} className="h-24 text-center">
+                    Aucun historique de présence trouvé pour cet employé.
                     </TableCell>
                 </TableRow>
             ) : (
                 data.map((record) => (
                     <TableRow key={record.id}>
-                        <TableCell className="font-medium">
-                            <Link href={`/employees/${record.employee_id}`} className="hover:underline">
-                            {record.employee_name}
-                            </Link>
-                        </TableCell>
                     <TableCell>{record.date}</TableCell>
                     <TimeCell time={record.morning_in} />
                     <TimeCell time={record.morning_out} />
