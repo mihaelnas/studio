@@ -1,4 +1,5 @@
 
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProcessDataButton } from "./process-data-button";
 
@@ -14,9 +15,10 @@ export default function ProcessingPage() {
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center gap-6 pt-6 text-center">
             <p className="max-w-prose text-muted-foreground">
-                Ce processus lit tous les enregistrements de la page "Logs Bruts", les regroupe par employé et par jour, 
-                et calcule les heures d'arrivée/départ du matin et de l'après-midi, ainsi que le total des heures travaillées.
-                Les résultats sont stockés dans la collection "Analyses". Exécutez ce traitement après chaque nouvelle importation de logs.
+                Ce processus lit tous les enregistrements de la page "Logs Bruts" qui sont "en attente", valide leur cohérence (alternance Check-in/Check-out), 
+                et calcule les heures d'arrivée/départ, le temps de travail, les retards et les heures supplémentaires.
+                Les logs invalides sont rejetés. Les résultats sont stockés dans la collection "Analyses". 
+                Exécutez ce traitement après chaque nouvelle importation de logs, idéalement une fois par jour (ex: à 21h).
             </p>
           <ProcessDataButton />
         </CardContent>

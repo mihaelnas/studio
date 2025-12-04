@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from 'firebase/firestore';
 
 export type Employee = {
@@ -48,6 +49,8 @@ export type AttendanceLog = {
     eventDescription: string;
     remarks: string;
     createdAt: Timestamp;
+    status: 'pending' | 'processed' | 'rejected';
+    rejectionReason?: string;
 }
 
 export type ProcessedAttendance = {

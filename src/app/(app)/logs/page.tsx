@@ -10,18 +10,46 @@ import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import type { AttendanceLog } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 function LogRowSkeleton() {
   return (
     <TableRow>
-      {Array.from({ length: 11 }).map((_, i) => (
+      {Array.from({ length: 12 }).map((_, i) => (
         <TableCell key={i}><Skeleton className="h-4 w-full" /></TableCell>
       ))}
     </TableRow>
   );
+}
+
+const StatusBadge = ({ log }: { log: AttendanceLog }) => {
+    switch (log.status) {
+        case 'processed':
+            return <Badge variant="default" className="bg-green-600 hover:bg-green-700"><CheckCircle className="mr-1 h-3 w-3" />Traité</Badge>;
+        case 'rejected':
+            return (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger>
+                            <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />Rejeté</Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{log.rejectionReason || "Raison inconnue"}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            );
+        default:
+            return <Badge variant="secondary"><Clock className="mr-1 h-3 w-3" />En attente</Badge>;
+    }
 }
 
 export default function LogsPage() {
@@ -29,7 +57,6 @@ export default function LogsPage() {
 
   const attendanceLogsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    // Order by creation timestamp to show the latest logs first
     return query(collection(firestore, "attendanceLogs"), orderBy("createdAt", "desc"), limit(100));
   }, [firestore]);
 
@@ -40,7 +67,7 @@ export default function LogsPage() {
       <CardHeader>
         <CardTitle>Logs de Pointage Bruts en Temps Réel</CardTitle>
         <CardDescription>
-          Historique brut des derniers événements de pointage reçus depuis les appareils biométriques.
+          Historique brut des derniers événements de pointage reçus, avec leur statut de traitement.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -48,6 +75,7 @@ export default function LogsPage() {
             <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead>Statut</TableHead>
                         <TableHead>Date et Heure</TableHead>
                         <TableHead>ID Personnel</TableHead>
                         <TableHead>Prénom</TableHead>
@@ -66,7 +94,7 @@ export default function LogsPage() {
                       Array.from({ length: 5 }).map((_, i) => <LogRowSkeleton key={i} />)
                     ) : error ? (
                       <TableRow>
-                        <TableCell colSpan={11}>
+                        <TableCell colSpan={12}>
                           <div className="flex justify-center py-10">
                             <Alert variant="destructive" className="w-auto">
                               <AlertTriangle className="h-4 w-4" />
@@ -81,6 +109,7 @@ export default function LogsPage() {
                     ) : attendanceLogs && attendanceLogs.length > 0 ? (
                         attendanceLogs.map((log) => (
                             <TableRow key={log.id}>
+                                <TableCell><StatusBadge log={log} /></TableCell>
                                 <TableCell>{log.dateTime}</TableCell>
                                 <TableCell>{log.personnelId}</TableCell>
                                 <TableCell>{log.firstName}</TableCell>
@@ -106,7 +135,7 @@ export default function LogsPage() {
                         ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={11} className="h-24 text-center">
+                        <TableCell colSpan={12} className="h-24 text-center">
                           Aucun log de pointage reçu pour le moment. En attente de données...
                         </TableCell>
                       </TableRow>

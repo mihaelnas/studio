@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from "react";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader, Cog } from "lucide-react";
 import { useFirebase } from "@/firebase";
-import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
+import { collection, getDocs, writeBatch, doc, query, where } from "firebase/firestore";
 import type { AttendanceLog, ProcessedAttendance, Employee } from "@/lib/types";
 import { format, parse, isValid, startOfDay, endOfDay } from 'date-fns';
 import { errorEmitter } from "@/firebase/error-emitter";
@@ -27,7 +28,8 @@ export function ProcessDataButton() {
     toast({ title: "Début du traitement...", description: "Veuillez patienter." });
 
     try {
-        const logsSnapshot = await getDocs(collection(firestore, "attendanceLogs")).catch(error => {
+        const logsQuery = query(collection(firestore, "attendanceLogs"), where("status", "==", "pending"));
+        const logsSnapshot = await getDocs(logsQuery).catch(error => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'attendanceLogs', operation: 'list' }));
             throw error;
         });
@@ -41,7 +43,7 @@ export function ProcessDataButton() {
         const existingEmployees = new Set(employeesSnapshot.docs.map(doc => doc.id));
 
         if (logs.length === 0) {
-            toast({ variant: "default", title: "Information", description: "Aucun log brut à traiter." });
+            toast({ variant: "default", title: "Information", description: "Aucun nouveau log brut à traiter." });
             setIsProcessing(false);
             return;
         }
@@ -67,7 +69,7 @@ export function ProcessDataButton() {
                 employeesToCreate.set(trimmedPersonnelId, {
                     id: trimmedPersonnelId,
                     name: `${log.firstName?.trim() || ''} ${log.lastName?.trim() || ''}`.trim(),
-                    email: `${(log.firstName?.trim() || 'user').toLowerCase()}.${(log.lastName?.trim() || 'name').toLowerCase()}@miaraka.mg`, // Dummy email
+                    email: `${(log.firstName?.trim() || 'user').toLowerCase()}.${(log.lastName?.trim() || 'name').toLowerCase()}@miaraka.mg`,
                     department: 'Non assigné',
                     avatarUrl: randomAvatar.imageUrl,
                 });
@@ -83,6 +85,7 @@ export function ProcessDataButton() {
 
         const batch = writeBatch(firestore);
         let processedCount = 0;
+        let rejectedCount = 0;
 
         employeesToCreate.forEach((employeeData, employeeId) => {
             const employeeDocRef = doc(firestore, "employees", employeeId);
@@ -91,36 +94,54 @@ export function ProcessDataButton() {
 
         for (const key in groupedByEmployeeAndDay) {
             const dayLogs = groupedByEmployeeAndDay[key].sort((a, b) => new Date(a.dateTime.trim()).getTime() - new Date(b.dateTime.trim()).getTime());
+            
+            let lastStatus: 'Check-In' | 'Check-Out' | null = null;
+            let isValidSequence = true;
+            
+            if (dayLogs[0].inOutStatus !== 'Check-In') {
+                isValidSequence = false;
+            } else {
+                for (const log of dayLogs) {
+                    if (log.inOutStatus === lastStatus) {
+                        isValidSequence = false;
+                        break;
+                    }
+                    lastStatus = log.inOutStatus;
+                }
+            }
+
+            if (!isValidSequence) {
+                rejectedCount += dayLogs.length;
+                for (const log of dayLogs) {
+                    const logRef = doc(firestore, "attendanceLogs", log.id);
+                    batch.update(logRef, { status: "rejected", rejectionReason: "Séquence de pointage invalide (ex: check-in ou check-out successifs)." });
+                }
+                continue; // Skip to next group
+            }
+
+            processedCount += dayLogs.length;
             const employeeId = dayLogs[0].personnelId.trim();
             const date = format(parse(dayLogs[0].dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()), 'yyyy-MM-dd');
 
-            let checkIns: Date[] = [];
-            let checkOuts: Date[] = [];
-
-            dayLogs.forEach(log => {
-                const logTime = parse(log.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date());
-                if (log.inOutStatus.trim() === 'Check-In') {
-                    checkIns.push(logTime);
-                } else if (log.inOutStatus.trim() === 'Check-Out') {
-                    checkOuts.push(logTime);
-                }
-            });
-
             let totalWorkedMs = 0;
             let lastCheckIn: Date | null = null;
-
-            const allEvents = [...dayLogs.map(l => ({ time: parse(l.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()), type: l.inOutStatus.trim() }))].sort((a,b) => a.time.getTime() - b.time.getTime());
-
-            allEvents.forEach(event => {
-                if (event.type === 'Check-In') {
-                    lastCheckIn = event.time;
-                } else if (event.type === 'Check-Out' && lastCheckIn) {
-                    totalWorkedMs += event.time.getTime() - lastCheckIn.getTime();
-                    lastCheckIn = null;
+            
+            dayLogs.forEach(log => {
+                const logTime = parse(log.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date());
+                if (log.inOutStatus === 'Check-In') {
+                    lastCheckIn = logTime;
+                } else if (log.inOutStatus === 'Check-Out' && lastCheckIn) {
+                    totalWorkedMs += logTime.getTime() - lastCheckIn.getTime();
+                    lastCheckIn = null; // Reset for next pair
                 }
+                const logRef = doc(firestore, "attendanceLogs", log.id);
+                batch.update(logRef, { status: "processed" });
             });
 
             const total_worked_hours = totalWorkedMs > 0 ? totalWorkedMs / (1000 * 60 * 60) : 0;
+            
+            const checkIns = dayLogs.filter(l => l.inOutStatus === 'Check-In').map(l => parse(l.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()));
+            const checkOuts = dayLogs.filter(l => l.inOutStatus === 'Check-Out').map(l => parse(l.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()));
 
             const noon = parse(`${date} 13:00:00`, "yyyy-MM-dd HH:mm:ss", new Date());
             const morningIn = checkIns.find(ci => ci < noon);
@@ -155,18 +176,20 @@ export function ProcessDataButton() {
             const docId = `${employeeId}-${date}`;
             const docRef = doc(firestore, "processedAttendance", docId);
             batch.set(docRef, processedDoc, { merge: true });
-            processedCount++;
         }
 
         await batch.commit().catch(error => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: '/processedAttendance (batch write)',
+                path: '/ (batch write)',
                 operation: 'write',
             }));
             throw error;
         });
 
-        let toastMessage = `${processedCount} enregistrements de présence ont été traités.`;
+        let toastMessage = `${processedCount} logs traités avec succès.`;
+        if (rejectedCount > 0) {
+            toastMessage += ` ${rejectedCount} logs ont été rejetés pour cause d'incohérence.`
+        }
         if (employeesToCreate.size > 0) {
             toastMessage += ` ${employeesToCreate.size} nouveaux employés ont été créés.`
         }

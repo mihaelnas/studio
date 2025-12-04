@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Employee": {
@@ -351,6 +352,15 @@
         "remarks": {
           "type": "string",
           "description": "Additional remarks for the event."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "processed", "rejected"],
+          "description": "The processing status of the log entry."
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Reason why the log was rejected during processing."
         }
       },
       "required": [
@@ -363,7 +373,8 @@
         "eventPoint",
         "verifyType",
         "inOutStatus",
-        "eventDescription"
+        "eventDescription",
+        "status"
       ]
     },
     "ProcessedAttendance": {

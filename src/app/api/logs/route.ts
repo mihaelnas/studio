@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { NextResponse } from 'next/server';
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
 
     await addDoc(attendanceLogsCollection, {
       ...logData,
+      status: 'pending', // Set default status to pending
       createdAt: serverTimestamp(),
     });
 
