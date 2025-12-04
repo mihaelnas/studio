@@ -74,14 +74,16 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    if (department && isDepartmentLoading) return null; // Wait for department employee IDs to be fetched
-    if (department && !isDepartmentLoading && departmentEmployeeIds?.length === 0) return null; // No employees in dept, so no query needed
+    if (department && isDepartmentLoading) return null; // Attendre la fin du chargement des IDs
+    if (department && !isDepartmentLoading && departmentEmployeeIds?.length === 0) return null; // Pas d'employés dans le département
+
+    let q = query(collection(firestore, 'processedAttendance'), orderBy('date', 'desc'));
 
     let constraints = [];
     if (employeeId) {
-        constraints.push(where('employee_id', '==', employeeId));
-    } else if (department && departmentEmployeeIds) {
-        constraints.push(where('employee_id', 'in', departmentEmployeeIds));
+      constraints.push(where('employee_id', '==', employeeId));
+    } else if (department && departmentEmployeeIds && departmentEmployeeIds.length > 0) {
+      constraints.push(where('employee_id', 'in', departmentEmployeeIds));
     }
 
     if (dateRange?.from) {
@@ -90,12 +92,14 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     if (dateRange?.to) {
         constraints.push(where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
     }
+    
+    // Appliquer les contraintes s'il y en a, sinon utiliser la requête de base
+    if (constraints.length > 0) {
+        q = query(collection(firestore, 'processedAttendance'), ...constraints, orderBy('date', 'desc'));
+    }
 
-    const baseQuery = collection(firestore, 'processedAttendance');
-    // If there are any constraints, construct the query. Otherwise, return the base query ordered by date.
-    const finalQuery = query(baseQuery, ...constraints, orderBy('date', 'desc'));
+    return q;
 
-    return finalQuery;
   }, [firestore, employeeId, department, dateRange, departmentEmployeeIds, isDepartmentLoading]);
 
   const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery as Query<ProcessedAttendance> | null);
@@ -117,6 +121,10 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
 
   const isLoading = attendanceLoading || employeesLoading || isDepartmentLoading;
   const error = attendanceError || employeesError;
+
+  const showNoDataMessage = !isLoading && !error && (
+    (department && departmentEmployeeIds?.length === 0) || data.length === 0
+  );
 
   return (
     <div className="rounded-md border">
@@ -148,7 +156,7 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
                         </Alert>
                     </TableCell>
                 </TableRow>
-            ) : data.length === 0 ? (
+            ) : showNoDataMessage ? (
                 <TableRow>
                     <TableCell colSpan={employeeId ? 9 : 10} className="h-24 text-center">
                     Aucune donnée de présence traitée ne correspond à vos filtres.
@@ -191,3 +199,5 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     </div>
   );
 }
+
+    
