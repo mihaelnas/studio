@@ -74,10 +74,10 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    if (department && isDepartmentLoading) return null; // Wait for department employee IDs
-    if (department && departmentEmployeeIds?.length === 0) return null; // No employees in dept, so no query needed
+    if (department && isDepartmentLoading) return null; // Wait for department employee IDs to be fetched
+    if (department && !isDepartmentLoading && departmentEmployeeIds?.length === 0) return null; // No employees in dept, so no query needed
 
-    const constraints = [];
+    let constraints = [];
     if (employeeId) {
         constraints.push(where('employee_id', '==', employeeId));
     } else if (department && departmentEmployeeIds) {
@@ -91,16 +91,8 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
         constraints.push(where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
     }
 
-    // Only return a query if there is at least one filter other than the date.
-    // This prevents loading all attendance data by default.
-    if (constraints.length === 0 && !dateRange) {
-        // Or if you want to show last 30 days by default even with no filter
-        // return query(collection(firestore, 'processedAttendance'), orderBy('date', 'desc'));
-        return null;
-    }
-
-
     const baseQuery = collection(firestore, 'processedAttendance');
+    // If there are any constraints, construct the query. Otherwise, return the base query ordered by date.
     const finalQuery = query(baseQuery, ...constraints, orderBy('date', 'desc'));
 
     return finalQuery;
