@@ -2,7 +2,8 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProcessedAttendanceTable } from "./processed-attendance-table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Wrench } from "lucide-react";
 
 export default function AnalysesPage() {
   
@@ -15,7 +16,13 @@ export default function AnalysesPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ProcessedAttendanceTable />
+        <Alert>
+            <Wrench className="h-4 w-4" />
+            <AlertTitle>En Maintenance</AlertTitle>
+            <AlertDescription>
+                Cette section est actuellement en cours de maintenance pour résoudre un problème de permission de données. Merci de votre patience.
+            </AlertDescription>
+        </Alert>
       </CardContent>
     </Card>
   );
