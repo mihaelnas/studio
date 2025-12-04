@@ -45,10 +45,10 @@ import type { Employee } from "@/lib/types";
 const formSchema = z.object({
   employeeId: z.string({ required_error: "Veuillez sélectionner un employé." }),
   date: z.date({ required_error: "Une date est requise." }),
-  morningIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional(),
-  morningOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional(),
-  afternoonIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional(),
-  afternoonOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional(),
+  morningIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional().or(z.literal('')),
+  morningOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional().or(z.literal('')),
+  afternoonIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional().or(z.literal('')),
+  afternoonOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional().or(z.literal('')),
   reason: z.string().min(10, { message: "La raison doit comporter au moins 10 caractères." }),
 });
 
@@ -63,6 +63,10 @@ export function CorrectionForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       reason: "",
+      morningIn: "",
+      morningOut: "",
+      afternoonIn: "",
+      afternoonOut: "",
     },
   });
 
