@@ -1,7 +1,8 @@
+
 'use server';
 
 import { NextResponse } from 'next/server';
-import { initializeFirebase } from '@/firebase';
+import { initializeFirebaseServer } from '@/firebase/server-init';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { AttendanceLog } from '@/lib/types';
 
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
     }
 
-    const { firestore } = initializeFirebase();
+    const { firestore } = initializeFirebaseServer();
     const attendanceLogsCollection = collection(firestore, 'attendanceLogs');
 
     await addDoc(attendanceLogsCollection, {
