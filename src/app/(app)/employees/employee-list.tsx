@@ -73,7 +73,6 @@ export function EmployeeList() {
                 <TableCell>
                   <Link href={`/employees/${employee.id}`} className="flex items-center gap-3 hover:underline">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={employee.avatarUrl} alt={employee.name} />
                       <AvatarFallback>{employee.name ? employee.name.split(' ').map(n => n[0]).join('') : 'EM'}</AvatarFallback>
                     </Avatar>
                     <span className="font-medium">{employee.name}</span>

@@ -8,6 +8,7 @@ export type Employee = {
   email: string;
   avatarUrl?: string;
   department: string;
+  hourlyRate?: number;
   latenessRisk?: 'Élevé' | 'Moyen' | 'Faible';
   historicalAttendanceData?: string;
 };

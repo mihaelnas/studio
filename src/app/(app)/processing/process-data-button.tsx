@@ -12,7 +12,6 @@ import type { AttendanceLog, ProcessedAttendance, Employee } from "@/lib/types";
 import { format, parse, isValid } from 'date-fns';
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export function ProcessDataButton() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -65,13 +64,12 @@ export function ProcessDataButton() {
             }
 
             if (!existingEmployees.has(trimmedPersonnelId) && !employeesToCreate.has(trimmedPersonnelId)) {
-                const randomAvatar = PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)];
                 employeesToCreate.set(trimmedPersonnelId, {
                     id: trimmedPersonnelId,
                     name: `${log.firstName?.trim() || ''} ${log.lastName?.trim() || ''}`.trim(),
                     email: `${(log.firstName?.trim() || 'user').toLowerCase()}.${(log.lastName?.trim() || 'name').toLowerCase()}@miaraka.mg`,
                     department: 'Non assigné',
-                    avatarUrl: randomAvatar.imageUrl,
+                    hourlyRate: 25000, // Default hourly rate
                 });
             }
 
@@ -228,4 +226,3 @@ export function ProcessDataButton() {
     </Button>
   );
 }
-

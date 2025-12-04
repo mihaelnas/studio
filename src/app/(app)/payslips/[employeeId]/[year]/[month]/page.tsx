@@ -130,7 +130,7 @@ export default function PayslipPage() {
             return acc;
         }, { totalHours: 0, overtimeHours: 0 });
 
-        const hourlyRate = employee.department === 'Chirurgie' || employee.department === 'Cardiologie' ? 35000 : 25000;
+        const hourlyRate = employee.hourlyRate || 25000;
         const baseSalary = (totalHours - overtimeHours) * hourlyRate;
         const overtimePay = overtimeHours * hourlyRate * 1.5;
         const grossSalary = baseSalary + overtimePay;
@@ -268,4 +268,3 @@ export default function PayslipPage() {
         </div>
     );
 }
-

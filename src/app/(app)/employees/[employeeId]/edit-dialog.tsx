@@ -57,6 +57,7 @@ const departments = [
 const formSchema = z.object({
   email: z.string().email({ message: "Veuillez saisir une adresse e-mail valide." }),
   department: z.string({ required_error: "Veuillez sélectionner un département." }),
+  hourlyRate: z.coerce.number().min(0, { message: "Le taux horaire doit être positif." }).optional(),
 });
 
 export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogProps) {
@@ -69,6 +70,7 @@ export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogPro
     defaultValues: {
       email: employee.email,
       department: employee.department,
+      hourlyRate: employee.hourlyRate || 0,
     },
   });
 
@@ -129,6 +131,19 @@ export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogPro
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="hourlyRate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Taux Horaire (Ar)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="ex: 25000" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

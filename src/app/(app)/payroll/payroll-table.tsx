@@ -83,7 +83,7 @@ export function PayrollTable() {
                 });
 
                 const calculatedPayroll = employees.map(employee => {
-                    const hourlyRate = employee.department === 'Chirurgie' || employee.department === 'Cardiologie' ? 35000 : 25000;
+                    const hourlyRate = employee.hourlyRate || 25000;
                     const data = payrollMap.get(employee.id) || { totalHours: 0, overtimeHours: 0 };
                     
                     const basePay = (data.totalHours - data.overtimeHours) * hourlyRate;

@@ -35,9 +35,12 @@ const calculatePayroll = (employees: Employee[], attendance: ProcessedAttendance
   });
 
   return employees.map(employee => {
-    const hourlyRate = employee.department === 'Chirurgie' || employee.department === 'Cardiologie' ? 35000 : 25000;
+    const hourlyRate = employee.hourlyRate || 25000; // Default rate if not set
     const data = payrollMap.get(employee.id) || { totalHours: 0, overtimeHours: 0 };
-    const grossSalary = (data.totalHours * hourlyRate) + (data.overtimeHours * hourlyRate * 1.5);
+    
+    const basePay = (data.totalHours - data.overtimeHours) * hourlyRate;
+    const overtimePay = data.overtimeHours * hourlyRate * 1.5; // Overtime at 150%
+    const grossSalary = basePay + overtimePay;
 
     return {
       employeeId: employee.id,
