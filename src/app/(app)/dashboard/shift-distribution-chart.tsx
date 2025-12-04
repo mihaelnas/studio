@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { Label, Pie, PieChart, Cell } from "recharts"
 import {
   ChartConfig,
@@ -9,9 +9,8 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { Shift, ShiftType } from '@/lib/types';
-import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, getDocs, FirestoreError } from 'firebase/firestore';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -63,20 +62,38 @@ const processChartData = (shifts: Shift[]) => {
 
 export function ShiftDistributionChart() {
   const { firestore } = useFirebase();
+  const [data, setData] = useState<Shift[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<FirestoreError | null>(null);
+
 
   const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
   const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
   
-  const shiftsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-        collection(firestore, 'schedules'),
-        where('date', '>=', weekStart),
-        where('date', '<=', weekEnd)
-    );
-  }, [firestore, weekStart, weekEnd]);
+  useEffect(() => {
+    if (!firestore) return;
 
-  const { data, isLoading, error } = useCollection<Shift>(shiftsQuery);
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const shiftsQuery = query(
+                collection(firestore, 'schedules'),
+                where('date', '>=', weekStart),
+                where('date', '<=', weekEnd)
+            );
+            const snapshot = await getDocs(shiftsQuery);
+            const shiftsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shift));
+            setData(shiftsData);
+            setError(null);
+        } catch (err) {
+            console.error(err);
+            setError(err as FirestoreError);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    fetchData();
+  }, [firestore, weekStart, weekEnd]);
   
   const chartData = useMemo(() => processChartData(data || []), [data]);
 

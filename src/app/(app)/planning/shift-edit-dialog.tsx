@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,9 +24,8 @@ import { useToast } from "@/hooks/use-toast";
 import type { Shift, ShiftType, Employee } from "@/lib/types";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { useFirebase } from "@/firebase";
+import { collection, getDocs, FirestoreError } from "firebase/firestore";
 
 interface ShiftEditDialogProps {
   shift: Shift | null;
@@ -45,8 +44,26 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
   const { toast } = useToast();
   const { firestore } = useFirebase();
 
-  const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
-  const { data: employees, isLoading: employeesLoading } = useCollection<Employee>(employeesQuery);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+
+  useEffect(() => {
+    if (!firestore || !isOpen) return;
+
+    const fetchEmployees = async () => {
+        setEmployeesLoading(true);
+        try {
+            const snapshot = await getDocs(collection(firestore, 'employees'));
+            const employeeData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+            setEmployees(employeeData);
+        } catch (error) {
+            console.error("Failed to fetch employees:", error);
+        } finally {
+            setEmployeesLoading(false);
+        }
+    };
+    fetchEmployees();
+  }, [firestore, isOpen]);
   
   const employee = employees?.find(e => e.id === selectedEmployeeId);
 

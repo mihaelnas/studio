@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { addDays, startOfWeek, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Shift, Employee, ShiftType } from '@/lib/types';
@@ -11,9 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { ShiftEditDialog } from './shift-edit-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, getDocs, FirestoreError } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -52,22 +51,50 @@ export function SchedulePlanner() {
   const { firestore } = useFirebase();
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  const [employees, setEmployees] = useState<Employee[] | null>(null);
+  const [shifts, setShifts] = useState<Shift[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<FirestoreError | null>(null);
+
+
   const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn, locale: fr }), [currentDate]);
   const weekDays = useMemo(() => Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)), [weekStart]);
 
-  const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
-  const shiftsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    const weekEnd = addDays(weekStart, 6);
-    return query(
-        collection(firestore, 'schedules'), 
-        where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
-        where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
-    );
-  }, [firestore, weekStart]);
+  useEffect(() => {
+    if (!firestore) return;
+    
+    const fetchAllData = async () => {
+        setIsLoading(true);
+        try {
+            const employeesQuery = collection(firestore, 'employees');
+            const weekEnd = addDays(weekStart, 6);
+            const shiftsQuery = query(
+                collection(firestore, 'schedules'),
+                where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
+                where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
+            );
 
-  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
-  const { data: shifts, isLoading: shiftsLoading, error: shiftsError } = useCollection<Shift>(shiftsQuery);
+            const [employeesSnapshot, shiftsSnapshot] = await Promise.all([
+                getDocs(employeesQuery),
+                getDocs(shiftsQuery)
+            ]);
+
+            const employeeData = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+            const shiftData = shiftsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shift));
+
+            setEmployees(employeeData);
+            setShifts(shiftData);
+            setError(null);
+        } catch (err) {
+            console.error(err);
+            setError(err as FirestoreError);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchAllData();
+  }, [firestore, weekStart]);
 
 
   const getShiftForEmployeeAndDay = (employeeId: string, day: Date): Shift | undefined => {
@@ -98,9 +125,6 @@ export function SchedulePlanner() {
   const changeWeek = (direction: 'prev' | 'next') => {
       setCurrentDate(prev => addDays(prev, direction === 'prev' ? -7 : 7));
   }
-
-  const isLoading = employeesLoading || shiftsLoading;
-  const error = employeesError || shiftsError;
 
   return (
     <div className="space-y-4">
