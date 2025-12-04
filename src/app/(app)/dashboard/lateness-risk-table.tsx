@@ -16,9 +16,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
+import { useFirebase } from '@/firebase';
+import { collection, getDocs, query as firestoreQuery, where } from 'firebase/firestore';
 import type { Employee, ProcessedAttendance } from '@/lib/types';
 import { predictLatenessRisk } from '@/ai/flows/predict-lateness-risk';
 import type { PredictLatenessRiskOutput } from '@/ai/flows/predict-lateness-risk';
@@ -62,19 +61,26 @@ export function LatenessRiskTable() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const employeesQuery = useMemoFirebase(() => firestore ? firestoreQuery(collection(firestore, 'employees')) : null, [firestore]);
-  const { data: initialEmployees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
-
   useEffect(() => {
-    if (initialEmployees) {
-        setEmployees(initialEmployees);
-        setIsLoading(false);
-    }
-    if (employeesError) {
-        setError("Impossible de charger les employés.");
-        setIsLoading(false);
-    }
-  }, [initialEmployees, employeesError]);
+    if (!firestore) return;
+
+    const fetchEmployees = async () => {
+        setIsLoading(true);
+        try {
+            const employeesSnapshot = await getDocs(collection(firestore, 'employees'));
+            const employeeData = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+            setEmployees(employeeData);
+            setError(null);
+        } catch (err) {
+            console.error(err);
+            setError("Impossible de charger les employés.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchEmployees();
+  }, [firestore]);
 
   const handlePredict = async (employeeId: string) => {
     if (!firestore) return;
@@ -113,7 +119,7 @@ export function LatenessRiskTable() {
      }
   }
     
-  if (isLoading || employeesLoading) {
+  if (isLoading) {
       return (
         <div className="rounded-md border">
             <Table>
@@ -202,3 +208,4 @@ export function LatenessRiskTable() {
   );
 }
 
+    
