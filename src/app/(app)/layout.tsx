@@ -4,10 +4,11 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useRouter } from 'next/navigation';
+import Image from "next/image";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
 import { AppHeader } from "@/components/layout/header";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
-import { Stethoscope, LogOut, Loader } from "lucide-react";
+import { LogOut, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FirebaseClientProvider, useFirebase } from "@/firebase";
 import { signOut } from "firebase/auth";
@@ -57,10 +58,10 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       <Sidebar>
         <SidebarHeader className="p-2">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Stethoscope className="size-5" />
+            <div className="flex size-9 items-center justify-center rounded-lg bg-white p-1">
+                <Image src="https://www.lavitaperte.org/wp-content/uploads/2018/11/logo-corassori.jpg" width={36} height={36} alt="La Vita Per Te logo" className="object-contain" />
             </div>
-            <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">TimeSense HR</h1>
+            <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">La Vita per Te</h1>
           </div>
         </SidebarHeader>
         <SidebarContent className="p-2">
