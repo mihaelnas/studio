@@ -3,6 +3,50 @@
 import { explainLatenessRisk } from '@/ai/flows/explain-lateness-risk';
 import { predictLatenessRisk } from '@/ai/flows/predict-lateness-risk';
 import type { PredictLatenessRiskOutput } from '@/ai/flows/predict-lateness-risk';
+import { generatePayslipEmail } from '@/ai/flows/send-payslip-flow';
+import { getFirestore, collection, getDocs, writeBatch, serverTimestamp, doc } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase/index';
+import type { Employee, ProcessedAttendance } from './types';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+interface PayrollEntry {
+  employeeId: string;
+  name: string;
+  email: string;
+  grossSalary: number;
+}
+
+const calculatePayroll = (employees: Employee[], attendance: ProcessedAttendance[]): PayrollEntry[] => {
+  const payrollMap = new Map<string, { totalHours: number; overtimeHours: number }>();
+
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  attendance.forEach(record => {
+    const recordDate = new Date(record.date);
+    if (recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear) {
+      const current = payrollMap.get(record.employee_id) || { totalHours: 0, overtimeHours: 0 };
+      current.totalHours += record.total_worked_hours;
+      current.overtimeHours += record.total_overtime_minutes > 0 ? record.total_overtime_minutes / 60 : 0;
+      payrollMap.set(record.employee_id, current);
+    }
+  });
+
+  return employees.map(employee => {
+    const hourlyRate = employee.department === 'Chirurgie' || employee.department === 'Cardiologie' ? 35000 : 25000;
+    const data = payrollMap.get(employee.id) || { totalHours: 0, overtimeHours: 0 };
+    const grossSalary = (data.totalHours * hourlyRate) + (data.overtimeHours * hourlyRate * 1.5);
+
+    return {
+      employeeId: employee.id,
+      name: employee.name,
+      email: employee.email,
+      grossSalary,
+    };
+  });
+};
+
 
 export async function getLatenessExplanation(employeeId: string): Promise<string> {
   try {
@@ -32,18 +76,80 @@ export async function sendPayslipsByEmail(): Promise<{
   success: boolean;
   message: string;
 }> {
-  console.log('Simulating sending payslips by email...');
-  // In a real application, you would:
-  // 1. Calculate the final payroll for the month for all employees.
-  // 2. Generate a PDF or formatted email for each payslip.
-  // 3. Use an email service (like SendGrid, Nodemailer, etc.) to send the emails.
+  console.log('Starting payslip generation and sending process...');
+  
+  try {
+    // Initialize Firestore Admin
+    const { firestore } = initializeFirebase();
 
-  // For now, we'll just simulate a successful operation.
-  await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
+    // 1. Fetch all employees and attendance data
+    const employeesSnapshot = await getDocs(collection(firestore, 'employees'));
+    const attendanceSnapshot = await getDocs(collection(firestore, 'processedAttendance'));
+    
+    const employees = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+    const attendance = attendanceSnapshot.docs.map(doc => doc.data() as ProcessedAttendance);
 
-  console.log('Payslips sent successfully (simulation).');
-  return {
-    success: true,
-    message: 'Les fiches de paie ont été envoyées avec succès.',
-  };
+    // 2. Calculate payroll for the current month
+    const payrollData = calculatePayroll(employees, attendance);
+
+    if (payrollData.length === 0) {
+      return { success: false, message: "Aucune donnée de paie à traiter pour le mois en cours." };
+    }
+
+    const payPeriod = format(new Date(), 'MMMM yyyy', { locale: fr });
+    const batch = writeBatch(firestore);
+    let successfulSends = 0;
+
+    // 3. Iterate through each employee with payroll data
+    for (const employeePayroll of payrollData) {
+      if (employeePayroll.grossSalary <= 0) continue;
+
+      const deductions = employeePayroll.grossSalary * 0.2; // 20% flat rate for taxes/etc.
+      const netSalary = employeePayroll.grossSalary - deductions;
+
+      // 4. Call Genkit to generate the payslip email content
+      const emailContent = await generatePayslipEmail({
+        employeeName: employeePayroll.name,
+        grossSalary: employeePayroll.grossSalary,
+        deductions: deductions,
+        netSalary: netSalary,
+        payPeriod: payPeriod,
+      });
+
+      // 5. Store the sent payslip in Firestore for auditing
+      const payslipDocRef = doc(collection(firestore, 'payslips'));
+      batch.set(payslipDocRef, {
+        employeeId: employeePayroll.employeeId,
+        payPeriodStart: format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd'),
+        payPeriodEnd: format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), 'yyyy-MM-dd'),
+        grossSalary: employeePayroll.grossSalary,
+        deductions,
+        netSalary,
+        sentDate: serverTimestamp(),
+        status: 'sent',
+        // Storing email content for review, in a real app might store a PDF link
+        emailSubject: emailContent.subject,
+        emailBody: emailContent.body,
+      });
+
+      // 6. **SIMULATE** sending the email
+      console.log(`--- SIMULATING EMAIL TO: ${employeePayroll.email} ---`);
+      console.log(`Subject: ${emailContent.subject}`);
+      console.log(`Body:\n${emailContent.body}`);
+      console.log(`--- END SIMULATION ---`);
+      
+      successfulSends++;
+    }
+
+    // Commit all the new payslip documents to Firestore
+    await batch.commit();
+
+    const message = `${successfulSends} fiches de paie ont été générées et stockées. L'envoi réel est simulé dans la console du serveur.`;
+    console.log(message);
+    return { success: true, message };
+
+  } catch (error) {
+    console.error('Failed to send payslips:', error);
+    return { success: false, message: 'Une erreur est survenue lors de la génération ou de l\'envoi des fiches de paie.' };
+  }
 }
