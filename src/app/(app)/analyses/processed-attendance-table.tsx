@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
-import { format } from 'date-fns';
+import { format, compareDesc } from 'date-fns';
 
 const TimeCell = ({ time }: { time: string | null }) => (
     <TableCell className="text-center">{time || 'N/A'}</TableCell>
@@ -63,8 +63,6 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
                 const q = query(collection(firestore, 'employees'), where('department', '==', department));
                 const snapshot = await getDocs(q);
                 const ids = snapshot.docs.map(doc => doc.id);
-                // If no employees are found for the department, set an array with a placeholder
-                // to ensure the subsequent 'in' query doesn't fail.
                 setDepartmentEmployeeIds(ids.length > 0 ? ids : ['no-employee-found']);
             } catch (e) {
                 console.error("Failed to fetch employee IDs for department", e);
@@ -82,13 +80,11 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore || (department && isDepartmentLoading)) return null;
 
-    let q: Query = query(collection(firestore, 'processedAttendance'), orderBy('date', 'desc'));
+    let q: Query = collection(firestore, 'processedAttendance');
 
     if (employeeId) {
       q = query(q, where('employee_id', '==', employeeId));
     } else if (department && departmentEmployeeIds) {
-      // departmentEmployeeIds will contain ['no-employee-found'] if no employees are in the dept,
-      // which correctly results in 0 documents.
       q = query(q, where('employee_id', 'in', departmentEmployeeIds));
     }
 
@@ -113,10 +109,15 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
   const data = useMemo(() => {
     if (!attendanceData || !employees) return [];
     const employeeMap = new Map(employees.map(e => [e.id, e.name]));
-    return attendanceData.map(record => ({
+    
+    const mappedData = attendanceData.map(record => ({
         ...record,
         employee_name: employeeMap.get(record.employee_id) || record.employee_id,
     }));
+
+    // Sort client-side
+    return mappedData.sort((a, b) => compareDesc(new Date(a.date), new Date(b.date)));
+
   }, [attendanceData, employees]);
 
   const isLoading = attendanceLoading || employeesLoading || (department && isDepartmentLoading);
