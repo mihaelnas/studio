@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { ProcessedAttendance, Employee } from "@/lib/types";
+import type { ProcessedAttendance } from "@/lib/types";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, DocumentData } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -17,12 +17,16 @@ const TimeCell = ({ time }: { time: string | null }) => (
     <TableCell className="text-center">{time || 'N/A'}</TableCell>
 );
 
-const renderValue = (value: number) => {
+const MinuteCell = ({ value, positiveColor = "text-amber-600", destructiveColor = "text-destructive" }: { value: number, positiveColor?: string, destructiveColor?: string }) => {
     if (value > 0) {
-        return <span className={value > 15 ? "text-destructive" : "text-amber-600"}>{value} min</span>;
+        const color = value > 15 ? destructiveColor : positiveColor;
+        return <span className={color}>{value} min</span>;
     }
     return <span className="text-green-600">0 min</span>;
 }
+
+// Simplified Employee type for this component
+type EmployeeForTable = { id: string; name: string };
 
 const RowSkeleton = ({ hasEmployeeColumn }: { hasEmployeeColumn: boolean }) => (
     <TableRow>
@@ -44,27 +48,31 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    const baseQuery = collection(firestore, 'processedAttendance');
+    let baseQuery: DocumentData = collection(firestore, 'processedAttendance');
     if (employeeId) {
-      return query(baseQuery, where('employee_id', '==', employeeId), orderBy('date', 'desc'));
+      baseQuery = query(baseQuery, where('employee_id', '==', employeeId));
     }
     return query(baseQuery, orderBy('date', 'desc'));
   }, [firestore, employeeId]);
 
-  const { data: attendanceData, isLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
-  const { data: employees, error: employeesError } = useCollection<Employee>(useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]));
+  const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
+  
+  const employeesQuery = useMemoFirebase(() => 
+    firestore ? collection(firestore, 'employees') : null, 
+    [firestore]
+  );
+  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<EmployeeForTable>(employeesQuery);
 
   const data = useMemo(() => {
     if (!attendanceData || !employees) return [];
-    return attendanceData.map(record => {
-      const employee = employees.find(e => e.id === record.employee_id);
-      return {
+    const employeeMap = new Map(employees.map(e => [e.id, e.name]));
+    return attendanceData.map(record => ({
         ...record,
-        employee_name: employee?.name || record.employee_id,
-      }
-    })
+        employee_name: employeeMap.get(record.employee_id) || record.employee_id,
+    }));
   }, [attendanceData, employees]);
 
+  const isLoading = attendanceLoading || employeesLoading;
   const error = attendanceError || employeesError;
 
   return (
@@ -78,9 +86,9 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
             <TableHead className="text-center">Départ Matin</TableHead>
             <TableHead className="text-center">Arrivée A-M</TableHead>
             <TableHead className="text-center">Départ Soir</TableHead>
-            <TableHead className="text-center">Heures Travaillées</TableHead>
-            <TableHead className="text-center">Retard Total</TableHead>
-            <TableHead className="text-center">H. Supp. Total</TableHead>
+            <TableHead className="text-center">H. Travaillées</TableHead>
+            <TableHead className="text-center">Minutes de Retard</TableHead>
+            <TableHead className="text-center">Minutes Supp.</TableHead>
             <TableHead className="text-center">En Congé</TableHead>
           </TableRow>
         </TableHeader>
@@ -104,7 +112,7 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
                     </TableCell>
                 </TableRow>
             ) : (
-                data.map((record: any) => (
+                data.map((record) => (
                     <TableRow key={record.id}>
                     {!employeeId && (
                         <TableCell className="font-medium">
@@ -119,8 +127,12 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
                     <TimeCell time={record.afternoon_in} />
                     <TimeCell time={record.afternoon_out} />
                     <TableCell className="text-center">{record.total_worked_hours.toFixed(2)}</TableCell>
-                    <TableCell className="text-center">{renderValue(record.total_late_minutes)}</TableCell>
-                    <TableCell className="text-center">{renderValue(record.total_overtime_minutes)}</TableCell>
+                    <TableCell className="text-center">
+                        <MinuteCell value={record.total_late_minutes} />
+                    </TableCell>
+                    <TableCell className="text-center">
+                        <MinuteCell value={record.total_overtime_minutes} positiveColor="text-green-600" destructiveColor="text-green-700" />
+                    </TableCell>
                     <TableCell className="text-center">
                         {record.is_leave ? (
                         <Badge variant="secondary">{record.leave_type || 'Oui'}</Badge>
@@ -136,3 +148,5 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
     </div>
   );
 }
+
+    
