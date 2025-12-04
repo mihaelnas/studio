@@ -120,7 +120,7 @@ export function ProcessDataButton() {
             const reversedLogs = [...dayLogs].reverse();
             const lastCheckOut = reversedLogs.find(l => l.inOutStatus.trim() === 'Check-Out');
              if (lastCheckOut) {
-                afternoon_out = parse(lastCheckOut.dateTime.trim(), "yyyy-MM-dd HH:mm-ss", new Date());
+                afternoon_out = parse(lastCheckOut.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date());
              }
 
             // Find check-in/out pairs
@@ -226,4 +226,5 @@ export function ProcessDataButton() {
   );
 }
 
+    
     
