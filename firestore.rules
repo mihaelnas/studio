@@ -38,11 +38,20 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    match /processedAttendance/{processedAttendanceId} {
+    // This rule now allows list/query operations on the entire collection
+    match /processedAttendance/{document=**} {
       allow read, write: if request.auth != null;
     }
 
     match /payslips/{payslipId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /manualCorrections/{manualCorrectionId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /schedules/{scheduleId} {
       allow read, write: if request.auth != null;
     }
   }
