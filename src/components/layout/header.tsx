@@ -12,8 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, LogOut } from "lucide-react";
 import { useFirebase } from "@/firebase";
+import { signOut } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+
 
 function ThemeSwitcher() {
     const { setTheme, theme } = useTheme();
@@ -33,7 +37,29 @@ function ThemeSwitcher() {
 
 
 export function AppHeader() {
-  const { user } = useFirebase();
+  const { user, auth } = useFirebase();
+  const { toast } = useToast();
+  const router = useRouter();
+
+
+  const handleSignOut = async () => {
+    if (!auth) return;
+    try {
+        await signOut(auth);
+        toast({
+            title: "Déconnexion réussie",
+            description: "Vous avez été déconnecté.",
+        });
+        router.push('/login');
+    } catch (error) {
+        console.error("Error signing out: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erreur de déconnexion",
+            description: "Une erreur est survenue lors de la déconnexion.",
+        });
+    }
+  };
 
   const getInitials = (email?: string | null) => {
     if (!email) return 'AD';
@@ -58,10 +84,10 @@ export function AppHeader() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Paramètres</DropdownMenuItem>
-            <DropdownMenuItem>Support</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Se déconnecter</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Se déconnecter</span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
