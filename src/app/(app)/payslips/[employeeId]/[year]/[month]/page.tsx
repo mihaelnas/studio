@@ -8,7 +8,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, getDocs, FirestoreError } from 'firebase/firestore';
 import type { Employee, ProcessedAttendance } from '@/lib/types';
-import { format, parse } from 'date-fns';
+import { format, parse, startOfMonth, endOfMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,8 +91,10 @@ export default function PayslipPage() {
         const fetchData = async () => {
             setAttendanceLoading(true);
             try {
-                const startDate = format(new Date(Number(year), Number(month) - 1, 1), 'yyyy-MM-dd');
-                const endDate = format(new Date(Number(year), Number(month), 0), 'yyyy-MM-dd');
+                const monthDate = new Date(Number(year), Number(month) - 1);
+                const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd');
+                const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd');
+                
                 const q = query(
                     collection(firestore, 'processedAttendance'),
                     where('employee_id', '==', employeeId),
@@ -159,7 +161,7 @@ export default function PayslipPage() {
         );
     }
     
-    if (!payslipData) {
+    if (!payslipData || payslipData.totalHours === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
                 <Alert>
@@ -259,4 +261,5 @@ export default function PayslipPage() {
         </div>
     );
 }
+
 
