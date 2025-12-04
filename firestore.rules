@@ -199,8 +199,8 @@ service cloud.firestore {
      */
     match /processedAttendance/{processedAttendanceId} {
       allow get, list: if isSignedIn();
-      allow create : if isHR();
-      allow update : if isHR() && resource != null;
+      allow create: if isHR();
+      allow update: if isHR() && resource != null;
       allow delete: if isHR() && resource != null;
     }
   }
