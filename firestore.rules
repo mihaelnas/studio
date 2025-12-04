@@ -1,73 +1,24 @@
 
-/**
- * Core Philosophy: This ruleset enforces a Role-Based Access Control (RBAC) model
- * for an HR management system. It defines two primary roles, assumed to be set via
- * Firebase Auth custom claims: 'hr' (Human Resources) and 'employee' (a standard user).
- * HR users have broad administrative privileges over all employee data, while standard
- * employees have read-only access to their own information.
- *
- * Data Structure: All employee-specific data, including attendance, payroll, and
- * schedules, is hierarchically organized under the /employees/{employeeId} path.
- * This creates a clear, user-centric data model that is easy to secure.
- *
- * Key Security Decisions:
- * - Access is gated by a custom claim `request.auth.token.role`. An 'hr' role grants
- *   administrative access. Without this role, users are treated as standard employees.
- * - Standard employees can only view their own data and cannot list or view data for
- *   other employees.
- * - All write operations (create, update, delete) are restricted to HR users to ensure
- *   data integrity and prevent unauthorized modifications.
- * - The `/shifts` collection is treated as public reference data, readable by any
- *   authenticated user, but only writable by HR.
- *
- * Denormalization for Authorization: The rules rely on the `employeeId` field being
- * denormalized within documents in subcollections (e.g., in an AttendanceRecord document).
- * This allows security rules to validate that a subcollection document belongs to the
- * correct parent employee without performing extra, costly `get` operations.
- *
- * Structural Segregation: The data model naturally segregates each employee's data
- * into their own document tree, which simplifies security rules and prevents data leakage
- * in list queries.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for readable and reusable logic
-    /**
-     * Checks if the user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the user is an HR admin.
-     * This relies on a custom claim being set on the user's auth token.
-     * Example: `admin.auth().setCustomUserClaims(uid, {role: 'hr'})`
-     */
     function isHR() {
       return isSignedIn() && request.auth.token.role == 'hr';
     }
 
-    /**
-     * Checks if the current user's UID matches the requested document's user ID.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * Validates that the employeeId within a document being created matches the
-     * employeeId in the path. Enforces relational integrity.
-     */
     function isCorrectEmployeeOnCreate(employeeId) {
       return request.resource.data.employeeId == employeeId;
     }
 
-    /**
-     * Ensures the employeeId of a document cannot be changed after creation.
-     */
     function isEmployeeIdImmutable() {
       return request.resource.data.employeeId == resource.data.employeeId;
     }
@@ -81,13 +32,6 @@ service cloud.firestore {
       allow get, list, create, update, delete: if isSignedIn();
     }
 
-    /**
-     * @description Rules for the top-level employees collection.
-     * @path /employees/{employeeId}
-     * @allow An HR admin reads any employee's profile `(get)`. An employee reads their own profile `(get)`.
-     * @deny A standard employee attempts to read another employee's profile `(get)`.
-     * @principle Enforces a role-based (HR) and ownership-based (employee) access model.
-     */
     match /employees/{employeeId} {
       allow get: if isHR() || isOwner(employeeId);
       allow list: if isSignedIn();
@@ -96,13 +40,6 @@ service cloud.firestore {
       allow delete: if isHR() && resource != null;
     }
 
-    /**
-     * @description Rules for employee attendance records.
-     * @path /employees/{employeeId}/attendanceRecords/{attendanceRecordId}
-     * @allow An HR admin lists attendance for an employee `(list)`. An employee reads their own record `(get)`.
-     * @deny A standard employee attempts to create an attendance record `(create)`.
-     * @principle Restricts writes to HR and allows employees read-only access to their own data tree.
-     */
     match /employees/{employeeId}/attendanceRecords/{attendanceRecordId} {
       allow get, list: if isHR() || isOwner(employeeId);
       allow create: if isHR() && isCorrectEmployeeOnCreate(employeeId);
@@ -110,13 +47,6 @@ service cloud.firestore {
       allow delete: if isHR() && resource != null;
     }
 
-    /**
-     * @description Rules for employee payroll data. This is sensitive information.
-     * @path /employees/{employeeId}/payrollData/{payrollDataId}
-     * @allow An HR admin creates a payroll entry for an employee `(create)`.
-     * @deny A standard employee attempts to read their colleague's payroll data `(get)`.
-     * @principle Restricts writes to HR and allows employees read-only access to their own data tree.
-     */
     match /employees/{employeeId}/payrollData/{payrollDataId} {
       allow get, list: if isHR() || isOwner(employeeId);
       allow create: if isHR() && isCorrectEmployeeOnCreate(employeeId);
@@ -124,25 +54,11 @@ service cloud.firestore {
       allow delete: if isHR() && resource != null;
     }
 
-     /**
-     * @description Rules for sent employee payslips.
-     * @path /employees/{employeeId}/payslips/{payslipId}
-     * @allow An HR admin can manage payslips. Employees can read their own.
-     * @deny An employee cannot access another employee's payslip.
-     * @principle Restricts writes to HR and allows employees read-only access to their own data tree.
-     */
     match /employees/{employeeId}/payslips/{payslipId} {
       allow get, list: if isHR() || isOwner(employeeId);
       allow create, update, delete: if isHR();
     }
 
-    /**
-     * @description Rules for AI-generated absence predictions.
-     * @path /employees/{employeeId}/absencePredictions/{absencePredictionId}
-     * @allow An employee views their own absence prediction `(get)`.
-     * @deny A standard employee attempts to delete a prediction `(delete)`.
-     * @principle Restricts writes to HR and allows employees read-only access to their own data tree.
-     */
     match /employees/{employeeId}/absencePredictions/{absencePredictionId} {
       allow get, list: if isHR() || isOwner(employeeId);
       allow create: if isHR() && isCorrectEmployeeOnCreate(employeeId);
@@ -150,13 +66,6 @@ service cloud.firestore {
       allow delete: if isHR() && resource != null;
     }
 
-    /**
-     * @description Rules for employee work schedules.
-     * @path /employees/{employeeId}/schedules/{employeeScheduleId}
-     * @allow An employee lists their own upcoming schedules `(list)`.
-     * @deny A standard employee attempts to modify their schedule `(update)`.
-     * @principle Restricts writes to HR and allows employees read-only access to their own data tree.
-     */
     match /employees/{employeeId}/schedules/{employeeScheduleId} {
       allow get, list: if isHR() || isOwner(employeeId);
       allow create: if isHR() && isCorrectEmployeeOnCreate(employeeId);
@@ -164,13 +73,6 @@ service cloud.firestore {
       allow delete: if isHR() && resource != null;
     }
 
-    /**
-     * @description Rules for work shifts, which are considered public reference data for all staff.
-     * @path /shifts/{shiftId}
-     * @allow Any authenticated employee or HR user can read shift information `(get, list)`.
-     * @deny A standard employee attempts to create a new type of shift `(create)`.
-     * @principle Allows public read for authenticated users but restricts writes to administrators.
-     */
     match /shifts/{shiftId} {
       allow get, list: if isSignedIn();
       allow create: if isHR();
@@ -178,25 +80,12 @@ service cloud.firestore {
       allow delete: if isHR() && resource != null;
     }
 
-    /**
-     * @description Rules for raw attendance logs, intended for real-time display and analysis.
-     * @path /attendanceLogs/{logId}
-     * @allow Authenticated users can read the logs for real-time updates and analysis `(get, list)`.
-     * @deny Writes are restricted to HR to ensure data integrity `(create, update, delete)`.
-     * @principle Allows broad read access for transparency while centralizing data entry control.
-     */
     match /attendanceLogs/{logId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isHR();
     }
-     /**
-     * @description Rules for processed daily attendance records.
-     * @path /processedAttendance/{processedAttendanceId}
-     * @allow Read access is granted to any signed in user for analysis and reporting.
-     * @deny All write operations are restricted to backend processes (represented by isHR) to ensure data integrity.
-     * @principle Protects cleaned data while making it available for reporting.
-     */
+    
     match /processedAttendance/{processedAttendanceId} {
       allow get, list: if isSignedIn();
       allow create: if isHR();
