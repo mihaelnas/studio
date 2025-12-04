@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo } from 'react';
@@ -10,6 +11,8 @@ import { useFirebase, useMemoFirebase } from '@/firebase';
 import type { AttendanceLog } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 function LogRowSkeleton() {
   return (
@@ -86,7 +89,17 @@ export default function LogsPage() {
                                 <TableCell>{log.deviceName}</TableCell>
                                 <TableCell>{log.eventPoint}</TableCell>
                                 <TableCell>{log.verifyType}</TableCell>
-                                <TableCell>{log.inOutStatus}</TableCell>
+                                <TableCell>
+                                    <Badge
+                                        className={cn({
+                                            "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-700/80": log.inOutStatus === 'Check-In',
+                                            "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-700/80": log.inOutStatus === 'Check-Out'
+                                        })}
+                                        variant="outline"
+                                    >
+                                        {log.inOutStatus}
+                                    </Badge>
+                                </TableCell>
                                 <TableCell>{log.eventDescription}</TableCell>
                                 <TableCell>{log.remarks}</TableCell>
                             </TableRow>
