@@ -2,27 +2,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Allow unauthenticated public access for the API endpoint to push logs
-    match /attendanceLogs/{logId} {
-      allow read, write: if true;
-    }
-
-    // Secure employee data and all sub-collections
-    match /employees/{employeeId}/{document=**} {
-       allow read, write: if request.auth != null;
-    }
-
-    // Allow access to top-level collections for authenticated users
-    match /employees/{employeeId} {
-       allow read, write: if request.auth != null;
-    }
-
-    match /shifts/{shiftId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /processedAttendance/{document=**} {
+    match /{document=**} {
       allow read, write: if request.auth != null;
     }
   }
