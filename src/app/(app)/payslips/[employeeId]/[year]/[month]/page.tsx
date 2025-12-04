@@ -8,7 +8,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, getDocs, FirestoreError } from 'firebase/firestore';
 import type { Employee, ProcessedAttendance } from '@/lib/types';
-import { format, parse, startOfMonth, endOfMonth } from 'date-fns';
+import { format, parse, startOfMonth, endOfMonth, getMonth, getYear } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,22 +88,28 @@ export default function PayslipPage() {
 
     useEffect(() => {
         if (!firestore || !year || !month || !employeeId) return;
+        
         const fetchData = async () => {
             setAttendanceLoading(true);
             try {
-                const monthDate = new Date(Number(year), Number(month) - 1);
-                const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd');
-                const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd');
-                
+                // Fetch all attendance for the employee
                 const q = query(
                     collection(firestore, 'processedAttendance'),
-                    where('employee_id', '==', employeeId),
-                    where('date', '>=', startDate),
-                    where('date', '<=', endDate)
+                    where('employee_id', '==', employeeId)
                 );
                 const snapshot = await getDocs(q);
-                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProcessedAttendance));
-                setAttendance(data);
+                const allAttendance = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProcessedAttendance));
+
+                // Filter by month and year on the client side
+                const targetMonth = Number(month) - 1;
+                const targetYear = Number(year);
+                
+                const filteredData = allAttendance.filter(record => {
+                    const recordDate = new Date(record.date);
+                    return getYear(recordDate) === targetYear && getMonth(recordDate) === targetMonth;
+                });
+                
+                setAttendance(filteredData);
                 setAttendanceError(null);
             } catch (err) {
                 setAttendanceError(err as FirestoreError);
@@ -113,6 +119,7 @@ export default function PayslipPage() {
         };
         fetchData();
     }, [firestore, employeeId, year, month]);
+
 
     const payslipData: PayslipData | null = useMemo(() => {
         if (!employee || !attendance) return null;
@@ -261,5 +268,4 @@ export default function PayslipPage() {
         </div>
     );
 }
-
 
