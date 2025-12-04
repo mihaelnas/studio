@@ -110,9 +110,9 @@ export async function sendPayslipsByEmail(): Promise<{
       // 4. Call Genkit to generate the payslip email content
       const emailContent = await generatePayslipEmail({
         employeeName: employeePayroll.name,
-        grossSalary: employeePayroll.grossSalary,
-        deductions: deductions,
-        netSalary: netSalary,
+        grossSalary: Number(employeePayroll.grossSalary.toFixed(2)),
+        deductions: Number(deductions.toFixed(2)),
+        netSalary: Number(netSalary.toFixed(2)),
         payPeriod: payPeriod,
       });
 
