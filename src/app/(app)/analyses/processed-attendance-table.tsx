@@ -59,49 +59,62 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     if (department && firestore) {
         setIsDepartmentLoading(true);
         const fetchEmployeeIds = async () => {
-            const q = query(collection(firestore, 'employees'), where('department', '==', department));
-            const snapshot = await getDocs(q);
-            const ids = snapshot.docs.map(doc => doc.id);
-            setDepartmentEmployeeIds(ids);
-            setIsDepartmentLoading(false);
+            try {
+                const q = query(collection(firestore, 'employees'), where('department', '==', department));
+                const snapshot = await getDocs(q);
+                const ids = snapshot.docs.map(doc => doc.id);
+                setDepartmentEmployeeIds(ids.length > 0 ? ids : []);
+            } catch (e) {
+                console.error("Failed to fetch employee IDs for department", e);
+                setDepartmentEmployeeIds([]);
+            } finally {
+                setIsDepartmentLoading(false);
+            }
         };
         fetchEmployeeIds();
     } else {
         setDepartmentEmployeeIds(null);
-        setIsDepartmentLoading(false);
     }
   }, [department, firestore]);
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    if (department && isDepartmentLoading) return null;
-    if (department && !isDepartmentLoading && departmentEmployeeIds?.length === 0) return null;
+    if (isDepartmentLoading) return null; // Wait for department loading to finish
 
+    let q: Query<DocumentData>;
     const baseCollection = collection(firestore, 'processedAttendance');
     let constraints = [];
-
+    
+    // Employee filter takes precedence
     if (employeeId) {
       constraints.push(where('employee_id', '==', employeeId));
-    } else if (department && departmentEmployeeIds && departmentEmployeeIds.length > 0) {
-      constraints.push(where('employee_id', 'in', departmentEmployeeIds));
+    } else if (department) {
+      // Handle department filter only if employee filter is not active
+      if (departmentEmployeeIds && departmentEmployeeIds.length > 0) {
+        constraints.push(where('employee_id', 'in', departmentEmployeeIds));
+      } else {
+        // If department is selected but no employees found, return no results
+        return null; 
+      }
     }
 
     if (dateRange?.from) {
-        constraints.push(where('date', '>=', format(dateRange.from, 'yyyy-MM-dd')));
+      constraints.push(where('date', '>=', format(dateRange.from, 'yyyy-MM-dd')));
     }
     if (dateRange?.to) {
-        constraints.push(where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
+      constraints.push(where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
     }
+
+    constraints.push(orderBy('date', 'desc'));
     
-    // Final query assembly
-    return query(baseCollection, ...constraints, orderBy('date', 'desc'));
+    return query(baseCollection, ...constraints);
 
   }, [firestore, employeeId, department, dateRange, departmentEmployeeIds, isDepartmentLoading]);
 
   const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery as Query<ProcessedAttendance> | null);
   
   const employeesQuery = useMemoFirebase(() => 
-    firestore ? collection(firestore, 'employees') : null, 
+    firestore ? query(collection(firestore, 'employees'), orderBy('name')) : null, 
     [firestore]
   );
   const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<EmployeeForTable>(employeesQuery);
@@ -118,9 +131,7 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
   const isLoading = attendanceLoading || employeesLoading || isDepartmentLoading;
   const error = attendanceError || employeesError;
 
-  const showNoDataMessage = !isLoading && !error && (
-    (department && departmentEmployeeIds?.length === 0) || data.length === 0
-  );
+  const showNoDataMessage = !isLoading && !error && (!attendanceData || attendanceData.length === 0);
 
   return (
     <div className="rounded-md border">
@@ -148,7 +159,7 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
                         <Alert variant="destructive" className="m-4">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertTitle>Erreur de Chargement</AlertTitle>
-                            <AlertDescription>Impossible de charger les données de présence. Vérifiez les permissions de la console.</AlertDescription>
+                            <AlertDescription>Impossible de charger les données de présence. Vérifiez les permissions de la console et les règles de sécurité Firestore.</AlertDescription>
                         </Alert>
                     </TableCell>
                 </TableRow>
