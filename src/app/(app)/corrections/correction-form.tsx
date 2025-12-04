@@ -4,9 +4,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,18 +38,20 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase, useMemoFirebase } from "@/firebase";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { collection, serverTimestamp } from 'firebase/firestore';
-import type { Employee } from "@/lib/types";
+import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import type { Employee, ProcessedAttendance } from "@/lib/types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 
 const formSchema = z.object({
   employeeId: z.string({ required_error: "Veuillez sélectionner un employé." }),
   date: z.date({ required_error: "Une date est requise." }),
-  morningIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional().or(z.literal('')),
-  morningOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional().or(z.literal('')),
-  afternoonIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional().or(z.literal('')),
-  afternoonOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format de l'heure invalide (HH:MM)" }).optional().or(z.literal('')),
+  morningIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format HH:MM requis" }).optional().or(z.literal('')),
+  morningOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format HH:MM requis" }).optional().or(z.literal('')),
+  afternoonIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format HH:MM requis" }).optional().or(z.literal('')),
+  afternoonOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format HH:MM requis" }).optional().or(z.literal('')),
   reason: z.string().min(10, { message: "La raison doit comporter au moins 10 caractères." }),
 });
 
@@ -70,24 +73,110 @@ export function CorrectionForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!firestore || !user) return;
+  const selectedEmployeeId = form.watch('employeeId');
+  const selectedDate = form.watch('date');
 
-    const correctionData = {
-      ...values,
-      correctedBy: user.uid,
-      timestamp: serverTimestamp(),
-      date: format(values.date, "yyyy-MM-dd"),
+  const fetchAndSetAttendance = useCallback(async () => {
+    if (!firestore || !selectedEmployeeId || !selectedDate) return;
+
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const docId = `${selectedEmployeeId}-${dateStr}`;
+    const attendanceDocRef = doc(firestore, 'processedAttendance', docId);
+
+    try {
+      const docSnap = await getDoc(attendanceDocRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data() as ProcessedAttendance;
+        form.setValue('morningIn', data.morning_in || "");
+        form.setValue('morningOut', data.morning_out || "");
+        form.setValue('afternoonIn', data.afternoon_in || "");
+        form.setValue('afternoonOut', data.afternoon_out || "");
+      } else {
+        // Reset fields if no data exists for that day
+        form.setValue('morningIn', "");
+        form.setValue('morningOut', "");
+        form.setValue('afternoonIn', "");
+        form.setValue('afternoonOut', "");
+      }
+    } catch (error) {
+      console.error("Error fetching attendance for correction:", error);
+      toast({ variant: 'destructive', title: "Erreur", description: "Impossible de charger les pointages existants." });
+    }
+  }, [firestore, selectedEmployeeId, selectedDate, form, toast]);
+
+  useEffect(() => {
+    fetchAndSetAttendance();
+  }, [selectedEmployeeId, selectedDate, fetchAndSetAttendance]);
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!firestore || !user) return;
+    
+    const dateStr = format(values.date, "yyyy-MM-dd");
+    const docId = `${values.employeeId}-${dateStr}`;
+    const attendanceDocRef = doc(firestore, 'processedAttendance', docId);
+
+    const originalDocSnap = await getDoc(attendanceDocRef);
+    const originalData = originalDocSnap.exists() ? originalDocSnap.data() : null;
+
+    // Calculate new total hours
+    let totalWorkedMs = 0;
+    const timeToMs = (timeStr: string | undefined | null) => {
+        if (!timeStr) return 0;
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return (hours * 60 + minutes) * 60 * 1000;
+    }
+    const morningInMs = timeToMs(values.morningIn);
+    const morningOutMs = timeToMs(values.morningOut);
+    const afternoonInMs = timeToMs(values.afternoonIn);
+    const afternoonOutMs = timeToMs(values.afternoonOut);
+    if(morningOutMs > morningInMs) totalWorkedMs += morningOutMs - morningInMs;
+    if(afternoonOutMs > afternoonInMs) totalWorkedMs += afternoonOutMs - afternoonInMs;
+    const total_worked_hours = totalWorkedMs / (1000 * 60 * 60);
+
+    const correctedAttendanceData: Partial<ProcessedAttendance> = {
+      employee_id: values.employeeId,
+      date: dateStr,
+      morning_in: values.morningIn || null,
+      morning_out: values.morningOut || null,
+      afternoon_in: values.afternoonIn || null,
+      afternoon_out: values.afternoonOut || null,
+      total_worked_hours: total_worked_hours,
+      total_late_minutes: 0, // Recalculate if needed
+      total_overtime_minutes: Math.max(0, (total_worked_hours - 8) * 60),
     };
 
-    const correctionsCollection = collection(firestore, 'manualCorrections');
-    addDocumentNonBlocking(correctionsCollection, correctionData);
+    setDocumentNonBlocking(attendanceDocRef, correctedAttendanceData, { merge: true });
+
+    const correctionLogData = {
+      employeeId: values.employeeId,
+      correctionDate: dateStr,
+      correctedBy: user.uid,
+      correctionReason: values.reason,
+      timestamp: serverTimestamp(),
+      originalMorningIn: originalData?.morning_in || null,
+      originalMorningOut: originalData?.morning_out || null,
+      originalAfternoonIn: originalData?.afternoon_in || null,
+      originalAfternoonOut: originalData?.afternoon_out || null,
+      correctedMorningIn: values.morningIn || null,
+      correctedMorningOut: values.morningOut || null,
+      correctedAfternoonIn: values.afternoonIn || null,
+      correctedAfternoonOut: values.afternoonOut || null,
+    };
+    
+    addDocumentNonBlocking(collection(firestore, 'manualCorrections'), correctionLogData);
 
     toast({
-      title: "Correction Soumise",
+      title: "Correction Appliquée",
       description: "Le journal de présence a été mis à jour avec succès.",
     });
-    form.reset();
+    form.reset({
+        reason: "",
+        morningIn: "",
+        morningOut: "",
+        afternoonIn: "",
+        afternoonOut: "",
+    });
+    form.setValue('employeeId', values.employeeId);
   }
 
   return (
@@ -148,7 +237,7 @@ export function CorrectionForm() {
                         selected={field.value}
                         onSelect={field.onChange}
                         disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
+                        date > new Date() || date < new Date("2023-01-01")
                         }
                         initialFocus
                     />
@@ -160,18 +249,28 @@ export function CorrectionForm() {
             />
         </div>
 
+        {selectedEmployeeId && selectedDate && (
+             <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Chargement des données</AlertTitle>
+                <AlertDescription>
+                    Les pointages existants pour cette journée sont pré-remplis. Modifiez-les et enregistrez.
+                </AlertDescription>
+            </Alert>
+        )}
+
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <FormField control={form.control} name="morningIn" render={({ field }) => (
-                <FormItem><FormLabel>Arrivée Matin</FormLabel><FormControl><Input placeholder="08:00" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Arrivée Matin</FormLabel><FormControl><Input placeholder="HH:MM" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="morningOut" render={({ field }) => (
-                <FormItem><FormLabel>Départ Matin</FormLabel><FormControl><Input placeholder="12:00" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Départ Matin</FormLabel><FormControl><Input placeholder="HH:MM" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="afternoonIn" render={({ field }) => (
-                <FormItem><FormLabel>Arrivée Après-midi</FormLabel><FormControl><Input placeholder="13:00" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Arrivée A-M</FormLabel><FormControl><Input placeholder="HH:MM" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="afternoonOut" render={({ field }) => (
-                <FormItem><FormLabel>Départ Après-midi</FormLabel><FormControl><Input placeholder="17:00" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Départ A-M</FormLabel><FormControl><Input placeholder="HH:MM" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
         </div>
 

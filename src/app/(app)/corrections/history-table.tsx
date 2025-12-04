@@ -20,7 +20,8 @@ const RowSkeleton = () => (
       <Skeleton className="h-4 w-24" />
     </TableCell>
     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
     <TableCell><Skeleton className="h-4 w-48" /></TableCell>
   </TableRow>
 );
@@ -42,11 +43,12 @@ export function HistoryTable() {
 
   const formattedData = useMemo(() => {
     if (!corrections || !employees) return [];
-    const employeeMap = new Map(employees.map(e => [e.id, e]));
+    
+    const employeeMap = new Map(employees.map(e => [e.id, e.name]));
 
     return corrections.map(c => {
-      const employee = employeeMap.get(c.employeeId);
-      const correctedByUser = employeeMap.get(c.correctedBy);
+      const employeeName = employeeMap.get(c.employeeId) || 'Inconnu';
+      const adminName = employeeMap.get(c.correctedBy) || 'Admin';
       
       let timestampStr = "Date inconnue";
       if (c.timestamp) {
@@ -54,14 +56,12 @@ export function HistoryTable() {
         timestampStr = `${format(jsDate, "PPP", { locale: fr })} à ${format(jsDate, "p", { locale: fr })}`;
       }
       
-      const adminName = correctedByUser?.name || 'Admin';
-
       return {
         ...c,
-        employeeName: employee?.name || 'Inconnu',
+        employeeName: employeeName,
         adminName: adminName,
-        timestamp: timestampStr,
-        date: c.correctionDate ? format(new Date(c.correctionDate), "PPP", { locale: fr }) : 'N/A',
+        timestampStr,
+        correctionDateStr: c.correctionDate ? format(new Date(c.correctionDate), "PPP", { locale: fr }) : 'N/A',
       };
     });
   }, [corrections, employees]);
@@ -74,8 +74,9 @@ export function HistoryTable() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Modifié Par</TableHead>
-            <TableHead>Employé</TableHead>
+            <TableHead>Employé Corrigé</TableHead>
+            <TableHead>Date de la Correction</TableHead>
+            <TableHead>Corrigé par</TableHead>
             <TableHead>Date de Modification</TableHead>
             <TableHead>Raison</TableHead>
           </TableRow>
@@ -85,7 +86,7 @@ export function HistoryTable() {
             Array.from({ length: 3 }).map((_, index) => <RowSkeleton key={index} />)
           ) : error ? (
              <TableRow>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={5}>
                     <Alert variant="destructive" className="m-4">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Erreur de Chargement</AlertTitle>
@@ -95,7 +96,7 @@ export function HistoryTable() {
             </TableRow>
           ) : formattedData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 Aucune correction manuelle n'a été enregistrée pour le moment.
               </TableCell>
             </TableRow>
@@ -103,15 +104,16 @@ export function HistoryTable() {
             formattedData.map((correction) => (
               <TableRow key={correction.id}>
                 <TableCell>
+                    <Link href={`/employees/${correction.employeeId}`} className="font-medium hover:underline">{correction.employeeName}</Link>
+                </TableCell>
+                 <TableCell>{correction.correctionDateStr}</TableCell>
+                <TableCell>
                   <span className="font-medium">{correction.adminName}</span>
                 </TableCell>
                 <TableCell>
-                    <Link href={`/employees/${correction.employeeId}`} className="hover:underline">{correction.employeeName}</Link>
-                </TableCell>
-                <TableCell>
                   <div className="flex flex-col">
-                    <span>{correction.timestamp.split(' à ')[0]}</span>
-                    <span className="text-xs text-muted-foreground">{correction.timestamp.split(' à ')[1]}</span>
+                    <span>{correction.timestampStr.split(' à ')[0]}</span>
+                    <span className="text-xs text-muted-foreground">{correction.timestampStr.split(' à ')[1]}</span>
                   </div>
                 </TableCell>
                 <TableCell className="max-w-xs truncate">{correction.correctionReason}</TableCell>

@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from 'firebase/firestore';
 
 export type Employee = {
@@ -20,11 +19,16 @@ export type ManualCorrection = {
   correctedBy: string; // User ID
   correctionReason: string;
   timestamp: Timestamp;
-  // Optional time fields
-  morningIn?: string;
-  morningOut?: string;
-  afternoonIn?: string;
-  afternoonOut?: string;
+  // Original times for audit
+  originalMorningIn?: string | null;
+  originalMorningOut?: string | null;
+  originalAfternoonIn?: string | null;
+  originalAfternoonOut?: string | null;
+  // Corrected times
+  correctedMorningIn?: string | null;
+  correctedMorningOut?: string | null;
+  correctedAfternoonIn?: string | null;
+  correctedAfternoonOut?: string | null;
 };
 
 export type ShiftType = 'Matin' | 'Après-midi' | 'Journée Complète' | 'Garde de Nuit' | 'Repos';
