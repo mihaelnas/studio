@@ -9,7 +9,7 @@ import { Loader, Cog } from "lucide-react";
 import { useFirebase } from "@/firebase";
 import { collection, getDocs, writeBatch, doc, query, where } from "firebase/firestore";
 import type { AttendanceLog, ProcessedAttendance, Employee } from "@/lib/types";
-import { format, parse, isValid, startOfDay, endOfDay } from 'date-fns';
+import { format, parse, isValid } from 'date-fns';
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -95,38 +95,45 @@ export function ProcessDataButton() {
         for (const key in groupedByEmployeeAndDay) {
             const dayLogs = groupedByEmployeeAndDay[key].sort((a, b) => new Date(a.dateTime.trim()).getTime() - new Date(b.dateTime.trim()).getTime());
             
+            const validSequenceLogs: AttendanceLog[] = [];
             let lastStatus: 'Check-In' | 'Check-Out' | null = null;
-            let isValidSequence = true;
             
-            if (dayLogs[0].inOutStatus !== 'Check-In') {
-                isValidSequence = false;
-            } else {
-                for (const log of dayLogs) {
-                    if (log.inOutStatus === lastStatus) {
-                        isValidSequence = false;
-                        break;
-                    }
-                    lastStatus = log.inOutStatus;
+            for (const log of dayLogs) {
+                const logRef = doc(firestore, "attendanceLogs", log.id);
+                
+                // Rule 1: First event must be a Check-In
+                if (lastStatus === null && log.inOutStatus !== 'Check-In') {
+                    batch.update(logRef, { status: "rejected", rejectionReason: "La journée doit commencer par un 'Check-In'." });
+                    rejectedCount++;
+                    continue;
                 }
+
+                // Rule 2: Events must alternate. If current event is same as last, reject it.
+                if (log.inOutStatus === lastStatus) {
+                    batch.update(logRef, { status: "rejected", rejectionReason: "Pointage en double ou invalide (séquence non alternée)." });
+                    rejectedCount++;
+                    continue;
+                }
+
+                // If we are here, the log is valid in the sequence
+                validSequenceLogs.push(log);
+                lastStatus = log.inOutStatus;
+                batch.update(logRef, { status: "processed" });
+                processedCount++;
+            }
+            
+            // If there are no valid logs for the day, skip calculation
+            if (validSequenceLogs.length === 0) {
+                continue;
             }
 
-            if (!isValidSequence) {
-                rejectedCount += dayLogs.length;
-                for (const log of dayLogs) {
-                    const logRef = doc(firestore, "attendanceLogs", log.id);
-                    batch.update(logRef, { status: "rejected", rejectionReason: "Séquence de pointage invalide (ex: check-in ou check-out successifs)." });
-                }
-                continue; // Skip to next group
-            }
-
-            processedCount += dayLogs.length;
-            const employeeId = dayLogs[0].personnelId.trim();
-            const date = format(parse(dayLogs[0].dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()), 'yyyy-MM-dd');
+            const employeeId = validSequenceLogs[0].personnelId.trim();
+            const date = format(parse(validSequenceLogs[0].dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()), 'yyyy-MM-dd');
 
             let totalWorkedMs = 0;
             let lastCheckIn: Date | null = null;
             
-            dayLogs.forEach(log => {
+            validSequenceLogs.forEach(log => {
                 const logTime = parse(log.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date());
                 if (log.inOutStatus === 'Check-In') {
                     lastCheckIn = logTime;
@@ -134,14 +141,12 @@ export function ProcessDataButton() {
                     totalWorkedMs += logTime.getTime() - lastCheckIn.getTime();
                     lastCheckIn = null; // Reset for next pair
                 }
-                const logRef = doc(firestore, "attendanceLogs", log.id);
-                batch.update(logRef, { status: "processed" });
             });
 
             const total_worked_hours = totalWorkedMs > 0 ? totalWorkedMs / (1000 * 60 * 60) : 0;
             
-            const checkIns = dayLogs.filter(l => l.inOutStatus === 'Check-In').map(l => parse(l.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()));
-            const checkOuts = dayLogs.filter(l => l.inOutStatus === 'Check-Out').map(l => parse(l.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()));
+            const checkIns = validSequenceLogs.filter(l => l.inOutStatus === 'Check-In').map(l => parse(l.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()));
+            const checkOuts = validSequenceLogs.filter(l => l.inOutStatus === 'Check-Out').map(l => parse(l.dateTime.trim(), "yyyy-MM-dd HH:mm:ss", new Date()));
 
             const noon = parse(`${date} 13:00:00`, "yyyy-MM-dd HH:mm:ss", new Date());
             const morningIn = checkIns.find(ci => ci < noon);
@@ -223,3 +228,4 @@ export function ProcessDataButton() {
     </Button>
   );
 }
+
