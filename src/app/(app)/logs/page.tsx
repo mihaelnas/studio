@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import type { AttendanceLog } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,7 +26,8 @@ export default function LogsPage() {
 
   const attendanceLogsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, "attendanceLogs"), orderBy("createdAt", "desc"));
+    // Order by creation timestamp to show the latest logs first
+    return query(collection(firestore, "attendanceLogs"), orderBy("createdAt", "desc"), limit(100));
   }, [firestore]);
 
   const { data: attendanceLogs, isLoading, error } = useCollection<AttendanceLog>(attendanceLogsQuery);
@@ -36,7 +37,7 @@ export default function LogsPage() {
       <CardHeader>
         <CardTitle>Logs de Pointage Bruts en Temps Réel</CardTitle>
         <CardDescription>
-          Historique brut de tous les événements de pointage importés depuis les appareils biométriques.
+          Historique brut des derniers événements de pointage reçus depuis les appareils biométriques.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -93,7 +94,7 @@ export default function LogsPage() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={11} className="h-24 text-center">
-                          Aucun log de pointage trouvé. Importez un fichier pour commencer.
+                          Aucun log de pointage reçu pour le moment. En attente de données...
                         </TableCell>
                       </TableRow>
                     )}
