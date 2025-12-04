@@ -198,8 +198,10 @@ service cloud.firestore {
      * @principle Protects cleaned data while making it available for reporting.
      */
     match /processedAttendance/{processedAttendanceId} {
-      allow get, list, create, update, delete: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isHR();
     }
   }
 }
+
 
