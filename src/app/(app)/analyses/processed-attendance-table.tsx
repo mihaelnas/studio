@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import type { ProcessedAttendance, Employee } from "@/lib/types";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy, DocumentData, getDocs, Query } from 'firebase/firestore';
+import { collection, query, where, orderBy, DocumentData, getDocs, Query, endAt, startAt } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -52,7 +52,7 @@ interface ProcessedAttendanceTableProps {
 
 export function ProcessedAttendanceTable({ employeeId, department, dateRange }: ProcessedAttendanceTableProps) {
   const { firestore } = useFirebase();
-  const [departmentEmployeeIds, setDepartmentEmployeeIds] = useState<string[] | null>(null);
+  const [departmentEmployeeIds, setDepartmentEmployeeIds] = useState<string[] | undefined>(undefined);
   const [isDepartmentLoading, setIsDepartmentLoading] = useState(false);
 
   useEffect(() => {
@@ -63,51 +63,46 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
                 const q = query(collection(firestore, 'employees'), where('department', '==', department));
                 const snapshot = await getDocs(q);
                 const ids = snapshot.docs.map(doc => doc.id);
-                setDepartmentEmployeeIds(ids.length > 0 ? ids : []);
+                // If no employees are found for the department, set an array with a placeholder
+                // to ensure the subsequent 'in' query doesn't fail.
+                setDepartmentEmployeeIds(ids.length > 0 ? ids : ['no-employee-found']);
             } catch (e) {
                 console.error("Failed to fetch employee IDs for department", e);
-                setDepartmentEmployeeIds([]);
+                setDepartmentEmployeeIds(['no-employee-found']);
             } finally {
                 setIsDepartmentLoading(false);
             }
         };
         fetchEmployeeIds();
     } else {
-        setDepartmentEmployeeIds(null);
+        setDepartmentEmployeeIds(undefined);
     }
   }, [department, firestore]);
 
   const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore || isDepartmentLoading) return null;
-    
-    const baseCollection = collection(firestore, 'processedAttendance');
-    const constraints: any[] = [];
+    if (!firestore || (department && isDepartmentLoading)) return null;
+
+    let q: Query = query(collection(firestore, 'processedAttendance'), orderBy('date', 'desc'));
 
     if (employeeId) {
-      constraints.push(where('employee_id', '==', employeeId));
-    } else if (department) {
-      if (departmentEmployeeIds && departmentEmployeeIds.length > 0) {
-        constraints.push(where('employee_id', 'in', departmentEmployeeIds));
-      } else {
-        // Department is selected, but no employees found in it.
-        // To return no results, we use a condition that is never true.
-        return query(baseCollection, where('employee_id', '==', 'no-employee-found'));
-      }
+      q = query(q, where('employee_id', '==', employeeId));
+    } else if (department && departmentEmployeeIds) {
+      // departmentEmployeeIds will contain ['no-employee-found'] if no employees are in the dept,
+      // which correctly results in 0 documents.
+      q = query(q, where('employee_id', 'in', departmentEmployeeIds));
     }
 
     if (dateRange?.from) {
-      constraints.push(where('date', '>=', format(dateRange.from, 'yyyy-MM-dd')));
+      q = query(q, where('date', '>=', format(dateRange.from, 'yyyy-MM-dd')));
     }
     if (dateRange?.to) {
-      constraints.push(where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
+      q = query(q, where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
     }
-
-    constraints.push(orderBy('date', 'desc'));
-
-    return query(baseCollection, ...constraints);
+    
+    return q;
   }, [firestore, employeeId, department, dateRange, departmentEmployeeIds, isDepartmentLoading]);
-
-  const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery as Query<ProcessedAttendance> | null);
+  
+  const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
   
   const employeesQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'employees'), orderBy('name')) : null, 
@@ -124,10 +119,10 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     }));
   }, [attendanceData, employees]);
 
-  const isLoading = attendanceLoading || employeesLoading || isDepartmentLoading;
+  const isLoading = attendanceLoading || employeesLoading || (department && isDepartmentLoading);
   const error = attendanceError || employeesError;
 
-  const showNoDataMessage = !isLoading && !error && (!attendanceData || attendanceData.length === 0);
+  const showNoDataMessage = !isLoading && !error && (!data || data.length === 0);
 
   return (
     <div className="rounded-md border">
@@ -202,5 +197,3 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     </div>
   );
 }
-
-    
