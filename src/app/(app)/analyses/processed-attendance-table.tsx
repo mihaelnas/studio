@@ -78,23 +78,20 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
   }, [department, firestore]);
 
   const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    if (isDepartmentLoading) return null; // Wait for department loading to finish
-
-    let q: Query<DocumentData>;
-    const baseCollection = collection(firestore, 'processedAttendance');
-    let constraints = [];
+    if (!firestore || isDepartmentLoading) return null;
     
-    // Employee filter takes precedence
+    const baseCollection = collection(firestore, 'processedAttendance');
+    const constraints: any[] = [];
+
     if (employeeId) {
       constraints.push(where('employee_id', '==', employeeId));
     } else if (department) {
-      // Handle department filter only if employee filter is not active
       if (departmentEmployeeIds && departmentEmployeeIds.length > 0) {
         constraints.push(where('employee_id', 'in', departmentEmployeeIds));
       } else {
-        // If department is selected but no employees found, return no results
-        return null; 
+        // Department is selected, but no employees found in it.
+        // To return no results, we use a condition that is never true.
+        return query(baseCollection, where('employee_id', '==', 'no-employee-found'));
       }
     }
 
@@ -106,9 +103,8 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     }
 
     constraints.push(orderBy('date', 'desc'));
-    
-    return query(baseCollection, ...constraints);
 
+    return query(baseCollection, ...constraints);
   }, [firestore, employeeId, department, dateRange, departmentEmployeeIds, isDepartmentLoading]);
 
   const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery as Query<ProcessedAttendance> | null);
@@ -206,3 +202,5 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     </div>
   );
 }
+
+    
