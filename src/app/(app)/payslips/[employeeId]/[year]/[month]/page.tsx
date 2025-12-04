@@ -16,7 +16,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -197,15 +196,9 @@ export default function PayslipPage() {
                 </CardHeader>
                 <CardContent className="mt-6 space-y-8">
                     <div className="flex flex-col sm:flex-row justify-between items-start">
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-20 w-20 border">
-                                <AvatarImage src={payslipData.employee.avatarUrl} alt={payslipData.employee.name} />
-                                <AvatarFallback>{payslipData.employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <h2 className="text-2xl font-bold">{payslipData.employee.name}</h2>
-                                <p className="text-muted-foreground">{payslipData.employee.department}</p>
-                            </div>
+                        <div>
+                            <h2 className="text-2xl font-bold">{payslipData.employee.name}</h2>
+                            <p className="text-muted-foreground">{payslipData.employee.department}</p>
                         </div>
                         <div className="text-left sm:text-right mt-4 sm:mt-0">
                             <p className="text-sm text-muted-foreground">Fiche de Paie du {format(new Date(), 'dd MMMM yyyy', { locale: fr })}</p>
