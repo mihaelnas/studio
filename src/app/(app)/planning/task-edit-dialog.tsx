@@ -29,7 +29,7 @@ import { useFirebase } from "@/firebase";
 import { collection, getDocs, FirestoreError } from "firebase/firestore";
 
 interface TaskEditDialogProps {
-  schedule: Schedule | null;
+  schedule: Schedule | undefined;
   date: Date;
   employeeId?: string;
   onSave: (schedule: Omit<Schedule, 'id'>) => void;
