@@ -9,7 +9,7 @@ import { LayoutDashboard, Wrench, Upload, FileSpreadsheet, CalendarDays, History
 const navItems = [
   { href: "/dashboard", label: "Tableau de Bord", icon: LayoutDashboard },
   { href: "/employees", label: "Employés", icon: Users },
-  { href: "/planning", label: "Planning", icon: CalendarDays },
+  { href: "/planning", label: "Planning Tâches", icon: CalendarDays },
   { href: "/corrections", label: "Corrections", icon: Wrench },
   { href: "/payroll", label: "Paie", icon: FileSpreadsheet },
   { href: "/import", label: "Importer Logs", icon: Upload },

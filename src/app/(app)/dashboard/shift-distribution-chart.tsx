@@ -8,7 +8,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import type { Shift, ShiftType } from '@/lib/types';
+import type { Schedule } from '@/lib/types';
 import { useFirebase, useMemoFirebase } from "@/firebase";
 import { collection, query, where, getDocs, FirestoreError } from 'firebase/firestore';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
@@ -18,51 +18,15 @@ import { AlertTriangle } from 'lucide-react';
 
 
 const chartConfig = {
-  count: {
-    label: "Employés",
-  },
-  'Matin': {
-    label: "Matin",
-    color: "hsl(var(--chart-1))",
-  },
-  'Après-midi': {
-    label: "Après-midi",
-    color: "hsl(var(--chart-2))",
-  },
-  'Garde de Nuit': {
-    label: "Nuit",
-    color: "hsl(var(--chart-3))",
-  },
-  'Journée Complète': {
-    label: "Journée",
-    color: "hsl(var(--chart-4))",
-  },
-  'Repos': {
-    label: "Repos",
-    color: "hsl(var(--muted))",
+  tasks: {
+    label: "Tâches",
   },
 } satisfies ChartConfig
 
-const processChartData = (shifts: Shift[]) => {
-  if (!shifts) return [];
-  const shiftCounts: { [key in ShiftType]?: number } = {};
-
-  shifts.forEach(shift => {
-      shiftCounts[shift.shiftType] = (shiftCounts[shift.shiftType] || 0) + 1;
-  })
-
-  const data = Object.entries(chartConfig).map(([shift, config]) => ({
-      shift,
-      count: shiftCounts[shift as ShiftType] || 0,
-      fill: config.color,
-  })).filter(item => item.shift !== 'count' && item.count > 0);
-  
-  return data;
-}
 
 export function ShiftDistributionChart() {
   const { firestore } = useFirebase();
-  const [data, setData] = useState<Shift[]>([]);
+  const [data, setData] = useState<Schedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<FirestoreError | null>(null);
 
@@ -76,14 +40,14 @@ export function ShiftDistributionChart() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const shiftsQuery = query(
+            const schedulesQuery = query(
                 collection(firestore, 'schedules'),
                 where('date', '>=', weekStart),
                 where('date', '<=', weekEnd)
             );
-            const snapshot = await getDocs(shiftsQuery);
-            const shiftsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shift));
-            setData(shiftsData);
+            const snapshot = await getDocs(schedulesQuery);
+            const schedulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Schedule));
+            setData(schedulesData);
             setError(null);
         } catch (err) {
             console.error(err);
@@ -95,9 +59,7 @@ export function ShiftDistributionChart() {
     fetchData();
   }, [firestore, weekStart, weekEnd]);
   
-  const chartData = useMemo(() => processChartData(data || []), [data]);
-
-  const total = useMemo(() => chartData.reduce((acc, curr) => acc + curr.count, 0), [chartData]);
+  const total = data?.length || 0;
   
   if (isLoading) {
     return <Skeleton className="h-[250px] w-[250px] rounded-full mx-auto" />;
@@ -105,18 +67,20 @@ export function ShiftDistributionChart() {
 
   if (error) {
      return (
-        <Alert variant="destructive" className="h-[250px] aspect-square mx-auto">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Erreur</AlertTitle>
-            <AlertDescription>Impossible de charger les données des gardes.</AlertDescription>
+        <Alert variant="destructive" className="h-full w-full flex items-center justify-center">
+             <div className="text-center">
+                <AlertTriangle className="h-6 w-6 mx-auto mb-2" />
+                <AlertTitle>Erreur</AlertTitle>
+                <AlertDescription>Impossible de charger les tâches.</AlertDescription>
+            </div>
         </Alert>
      )
   }
 
-  if (chartData.length === 0) {
+  if (total === 0) {
       return (
         <div className="flex h-[250px] w-full items-center justify-center">
-            <p className="text-muted-foreground text-center">Aucune garde planifiée pour cette semaine.</p>
+            <p className="text-muted-foreground text-center">Aucune tâche planifiée pour cette semaine.</p>
         </div>
       )
   }
@@ -132,15 +96,13 @@ export function ShiftDistributionChart() {
           content={<ChartTooltipContent hideLabel />}
         />
         <Pie
-          data={chartData}
-          dataKey="count"
-          nameKey="shift"
+          data={[{ value: total }]}
+          dataKey="value"
+          nameKey="tasks"
           innerRadius={60}
           strokeWidth={5}
+          fill="var(--chart-1)"
         >
-          {chartData.map((entry) => (
-            <Cell key={`cell-${entry.shift}`} fill={entry.fill} />
-          ))}
           <Label
             content={({ viewBox }) => {
               if (viewBox && "cx" in viewBox && "cy" in viewBox) {
@@ -163,7 +125,7 @@ export function ShiftDistributionChart() {
                       y={(viewBox.cy || 0) + 24}
                       className="fill-muted-foreground"
                     >
-                      Gardes
+                      Tâches
                     </tspan>
                   </text>
                 )

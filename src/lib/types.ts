@@ -31,13 +31,11 @@ export type ManualCorrection = {
   correctedAfternoonOut?: string | null;
 };
 
-export type ShiftType = 'Matin' | 'Après-midi' | 'Journée Complète' | 'Garde de Nuit' | 'Repos';
-
-export type Shift = {
+export type Schedule = {
   id: string;
   employeeId: string;
   date: Date | string; // Can be Date object or 'YYYY-MM-DD' string from Firestore
-  shiftType: ShiftType;
+  taskDescription: string;
 };
 
 export type AttendanceLog = {

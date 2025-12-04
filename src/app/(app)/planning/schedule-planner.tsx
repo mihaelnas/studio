@@ -4,12 +4,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { addDays, startOfWeek, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Shift, Employee, ShiftType } from '@/lib/types';
+import type { Schedule, Employee } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { ShiftEditDialog } from './shift-edit-dialog';
+import { TaskEditDialog } from './task-edit-dialog';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where, getDocs, FirestoreError, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -18,17 +17,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 
 const weekStartsOn = 1; // Monday
-
-const getShiftBadgeVariant = (shiftType: ShiftType) => {
-    switch(shiftType) {
-        case 'Garde de Nuit': return 'destructive';
-        case 'Journée Complète': return 'default';
-        case 'Matin':
-        case 'Après-midi': return 'secondary';
-        case 'Repos': return 'outline';
-        default: return 'outline';
-    }
-}
 
 const RowSkeleton = ({ weekDays }: { weekDays: Date[] }) => (
     <TableRow>
@@ -48,7 +36,7 @@ export function SchedulePlanner() {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const [employees, setEmployees] = useState<Employee[] | null>(null);
-  const [shifts, setShifts] = useState<Shift[] | null>(null);
+  const [schedules, setSchedules] = useState<Schedule[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<FirestoreError | null>(null);
 
@@ -64,22 +52,22 @@ export function SchedulePlanner() {
         try {
             const employeesQuery = collection(firestore, 'employees');
             const weekEnd = addDays(weekStart, 6);
-            const shiftsQuery = query(
+            const schedulesQuery = query(
                 collection(firestore, 'schedules'),
                 where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
                 where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
             );
 
-            const [employeesSnapshot, shiftsSnapshot] = await Promise.all([
+            const [employeesSnapshot, schedulesSnapshot] = await Promise.all([
                 getDocs(employeesQuery),
-                getDocs(shiftsQuery)
+                getDocs(schedulesQuery)
             ]);
 
             const employeeData = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-            const shiftData = shiftsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shift));
+            const scheduleData = schedulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Schedule));
 
             setEmployees(employeeData);
-            setShifts(shiftData);
+            setSchedules(scheduleData);
             setError(null);
         } catch (err) {
             console.error(err);
@@ -93,27 +81,27 @@ export function SchedulePlanner() {
   }, [firestore, weekStart]);
 
 
-  const getShiftForEmployeeAndDay = (employeeId: string, day: Date): Shift | undefined => {
-    return shifts?.find(
-      (shift) =>
-        shift.employeeId === employeeId &&
-        shift.date && new Date(shift.date).toDateString() === day.toDateString()
+  const getScheduleForEmployeeAndDay = (employeeId: string, day: Date): Schedule | undefined => {
+    return schedules?.find(
+      (schedule) =>
+        schedule.employeeId === employeeId &&
+        schedule.date && new Date(schedule.date).toDateString() === day.toDateString()
     );
   };
   
-  const handleSaveShift = (newShiftData: Omit<Shift, 'id'>) => {
+  const handleSaveTask = (newScheduleData: Omit<Schedule, 'id'>) => {
     if (!firestore) return;
     const scheduleCollection = collection(firestore, 'schedules');
 
-    const existingShift = shifts?.find(s => s.employeeId === newShiftData.employeeId && new Date(s.date).toDateString() === new Date(newShiftData.date).toDateString());
+    const existingSchedule = schedules?.find(s => s.employeeId === newScheduleData.employeeId && new Date(s.date).toDateString() === new Date(newScheduleData.date).toDateString());
 
-    if (existingShift) {
-        const docRef = doc(firestore, 'schedules', existingShift.id);
-        setDocumentNonBlocking(docRef, { shiftType: newShiftData.shiftType }, { merge: true });
+    if (existingSchedule) {
+        const docRef = doc(firestore, 'schedules', existingSchedule.id);
+        setDocumentNonBlocking(docRef, { taskDescription: newScheduleData.taskDescription }, { merge: true });
     } else {
         addDocumentNonBlocking(scheduleCollection, {
-            ...newShiftData,
-            date: format(newShiftData.date as Date, 'yyyy-MM-dd'),
+            ...newScheduleData,
+            date: format(newScheduleData.date as Date, 'yyyy-MM-dd'),
         });
     }
   }
@@ -174,22 +162,20 @@ export function SchedulePlanner() {
                         </div>
                     </TableCell>
                     {weekDays.map((day) => {
-                    const shift = getShiftForEmployeeAndDay(employee.id, day);
+                    const schedule = getScheduleForEmployeeAndDay(employee.id, day);
                     return (
-                        <TableCell key={day.toString()} className="text-center p-2 h-20">
-                        {shift ? (
-                            <ShiftEditDialog shift={shift} date={day} onSave={handleSaveShift}>
-                                <Badge variant={getShiftBadgeVariant(shift.shiftType)} className="cursor-pointer w-full flex justify-center py-1 text-xs">
-                                    {shift.shiftType}
-                                </Badge>
-                            </ShiftEditDialog>
-                        ) : (
-                            <ShiftEditDialog shift={null} date={day} employeeId={employee.id} onSave={handleSaveShift}>
+                        <TableCell key={day.toString()} className="text-center p-2 h-20 align-top">
+                        <TaskEditDialog schedule={schedule} date={day} employeeId={employee.id} onSave={handleSaveTask}>
+                             {schedule ? (
+                                <div className="text-xs text-left p-2 rounded-md bg-secondary/50 h-full cursor-pointer hover:bg-secondary">
+                                    {schedule.taskDescription}
+                                </div>
+                            ) : (
                                 <Button variant="ghost" size="icon" className="h-full w-full rounded-md hover:bg-secondary">
                                     <Plus className="h-4 w-4 text-muted-foreground" />
                                 </Button>
-                            </ShiftEditDialog>
-                        )}
+                            )}
+                        </TaskEditDialog>
                         </TableCell>
                     );
                     })}

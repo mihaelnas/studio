@@ -5,9 +5,9 @@ export default function PlanningPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Planification des Gardes</CardTitle>
+        <CardTitle>Planification des Tâches</CardTitle>
         <CardDescription>
-          Assignez et gérez les gardes hebdomadaires pour tout le personnel médical. Cliquez sur une garde pour la modifier ou sur un '+' pour en assigner une.
+          Assignez et gérez les tâches hebdomadaires pour tout le personnel. Cliquez sur une tâche pour la modifier ou sur un '+' pour en assigner une.
         </CardDescription>
       </CardHeader>
       <CardContent>

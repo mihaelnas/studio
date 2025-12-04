@@ -26,9 +26,9 @@ export default function DashboardPage() {
           <WeatherCard />
           <Card>
             <CardHeader>
-              <CardTitle>Répartition des Gardes</CardTitle>
+              <CardTitle>Tâches de la Semaine</CardTitle>
               <CardDescription>
-                Distribution des types de gardes assignées cette semaine.
+                Nombre total de tâches assignées cette semaine.
               </CardDescription>
             </CardHeader>
             <CardContent>

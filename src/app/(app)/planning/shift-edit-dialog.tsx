@@ -20,27 +20,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import type { Shift, ShiftType, Employee } from "@/lib/types";
+import type { Schedule, Employee } from "@/lib/types";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useFirebase } from "@/firebase";
 import { collection, getDocs, FirestoreError } from "firebase/firestore";
 
-interface ShiftEditDialogProps {
-  shift: Shift | null;
+interface TaskEditDialogProps {
+  schedule: Schedule | null;
   date: Date;
   employeeId?: string;
-  onSave: (shift: Omit<Shift, 'id'>) => void;
+  onSave: (schedule: Omit<Schedule, 'id'>) => void;
   children: React.ReactNode;
 }
 
-const shiftTypes: ShiftType[] = ['Matin', 'Après-midi', 'Journée Complète', 'Garde de Nuit', 'Repos'];
-
-export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: ShiftEditDialogProps) {
+export function TaskEditDialog({ schedule, date, employeeId, onSave, children }: TaskEditDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedShiftType, setSelectedShiftType] = useState<ShiftType | undefined>(shift?.shiftType);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(employeeId || shift?.employeeId);
+  const [taskDescription, setTaskDescription] = useState(schedule?.taskDescription || '');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(employeeId || schedule?.employeeId);
   const { toast } = useToast();
   const { firestore } = useFirebase();
 
@@ -65,28 +64,37 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
     fetchEmployees();
   }, [firestore, isOpen]);
   
+   useEffect(() => {
+    if (schedule) {
+      setTaskDescription(schedule.taskDescription);
+      setSelectedEmployeeId(schedule.employeeId);
+    } else {
+       setTaskDescription('');
+    }
+  }, [schedule, isOpen]);
+
   const employee = employees?.find(e => e.id === selectedEmployeeId);
 
   const handleSave = () => {
-    if (!selectedEmployeeId || !selectedShiftType) {
+    if (!selectedEmployeeId || !taskDescription.trim()) {
         toast({
             variant: "destructive",
             title: "Erreur",
-            description: "Veuillez sélectionner un employé et un type de garde.",
+            description: "Veuillez sélectionner un employé et saisir une description de la tâche.",
         });
         return;
     }
     
-    const newShift: Omit<Shift, 'id'> = {
+    const newSchedule: Omit<Schedule, 'id'> = {
         employeeId: selectedEmployeeId,
         date: date,
-        shiftType: selectedShiftType,
+        taskDescription: taskDescription.trim(),
     };
     
-    onSave(newShift);
+    onSave(newSchedule);
     toast({
-        title: "Garde Enregistrée",
-        description: `La garde de ${employee?.name} pour le ${format(date, 'PPP', { locale: fr })} a été mise à jour à ${selectedShiftType}.`,
+        title: "Tâche Enregistrée",
+        description: `La tâche de ${employee?.name} pour le ${format(date, 'PPP', { locale: fr })} a été mise à jour.`,
     });
     setIsOpen(false);
   };
@@ -97,10 +105,10 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {shift ? "Modifier la Garde" : "Assigner une Garde"} pour le {format(date, "PPP", { locale: fr })}
+            {schedule ? "Modifier la Tâche" : "Assigner une Tâche"}
           </DialogTitle>
           <DialogDescription>
-            {shift ? `Modifier la garde pour ${employee?.name}.` : "Assigner une nouvelle garde à un employé."}
+            Pour le {format(date, "PPP", { locale: fr })}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -112,7 +120,7 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
             <Select
                 value={selectedEmployeeId}
                 onValueChange={setSelectedEmployeeId}
-                disabled={!!shift || employeesLoading}
+                disabled={!!schedule || employeesLoading}
             >
                 <SelectTrigger id="employee">
                     <SelectValue placeholder={employeesLoading ? "Chargement..." : "Sélectionner l'Employé"} />
@@ -124,18 +132,16 @@ export function ShiftEditDialog({ shift, date, employeeId, onSave, children }: S
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="shift-type" className="text-right">
-              Type de Garde
+            <Label htmlFor="task-description" className="text-right">
+              Tâche
             </Label>
             <div className="col-span-3">
-            <Select value={selectedShiftType} onValueChange={(v) => setSelectedShiftType(v as ShiftType)}>
-                <SelectTrigger id="shift-type">
-                    <SelectValue placeholder="Sélectionter la Garde" />
-                </SelectTrigger>
-                <SelectContent>
-                    {shiftTypes.map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
-                </SelectContent>
-            </Select>
+                <Input 
+                    id="task-description"
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    placeholder="Ex: Consultation pédiatrique"
+                />
             </div>
           </div>
         </div>
