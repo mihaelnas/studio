@@ -48,10 +48,10 @@ import { Info } from "lucide-react";
 const formSchema = z.object({
   employeeId: z.string({ required_error: "Veuillez sélectionner un employé." }),
   date: z.date({ required_error: "Une date est requise." }),
-  morningIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format HH:MM requis" }).optional().or(z.literal('')),
-  morningOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format HH:MM requis" }).optional().or(z.literal('')),
-  afternoonIn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format HH:MM requis" }).optional().or(z.literal('')),
-  afternoonOut: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Format HH:MM requis" }).optional().or(z.literal('')),
+  morningIn: z.string().optional().or(z.literal('')),
+  morningOut: z.string().optional().or(z.literal('')),
+  afternoonIn: z.string().optional().or(z.literal('')),
+  afternoonOut: z.string().optional().or(z.literal('')),
   reason: z.string().min(10, { message: "La raison doit comporter au moins 10 caractères." }),
 });
 
@@ -261,16 +261,16 @@ export function CorrectionForm() {
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <FormField control={form.control} name="morningIn" render={({ field }) => (
-                <FormItem><FormLabel>Arrivée Matin</FormLabel><FormControl><Input placeholder="HH:MM" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Arrivée Matin</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="morningOut" render={({ field }) => (
-                <FormItem><FormLabel>Départ Matin</FormLabel><FormControl><Input placeholder="HH:MM" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Départ Matin</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="afternoonIn" render={({ field }) => (
-                <FormItem><FormLabel>Arrivée A-M</FormLabel><FormControl><Input placeholder="HH:MM" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Arrivée A-M</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="afternoonOut" render={({ field }) => (
-                <FormItem><FormLabel>Départ A-M</FormLabel><FormControl><Input placeholder="HH:MM" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Départ A-M</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
         </div>
 
