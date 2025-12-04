@@ -63,7 +63,7 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
                 const q = query(collection(firestore, 'employees'), where('department', '==', department));
                 const snapshot = await getDocs(q);
                 const ids = snapshot.docs.map(doc => doc.id);
-                setDepartmentEmployeeIds(ids.length > 0 ? ids : ['no-employee-found']);
+                setDepartmentEmployeeIds(ids.length > 0 ? ids : ['no-employee-found']); // Use a placeholder for empty array to prevent invalid query
             } catch (e) {
                 console.error("Failed to fetch employee IDs for department", e);
                 setDepartmentEmployeeIds(['no-employee-found']);
@@ -78,23 +78,34 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
   }, [department, firestore]);
 
   const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore || (department && isDepartmentLoading)) return null;
+    if (!firestore) return null;
+    if (department && isDepartmentLoading) return null; // Wait for department employee IDs to load
 
     let q: Query = collection(firestore, 'processedAttendance');
 
+    const filters: any[] = [];
     if (employeeId) {
-      q = query(q, where('employee_id', '==', employeeId));
+      filters.push(where('employee_id', '==', employeeId));
     } else if (department && departmentEmployeeIds) {
-      q = query(q, where('employee_id', 'in', departmentEmployeeIds));
+      if(departmentEmployeeIds.length > 0) {
+        filters.push(where('employee_id', 'in', departmentEmployeeIds));
+      } else {
+        // No employees in department, so return no results
+        filters.push(where('employee_id', '==', 'no-employee-found'));
+      }
     }
 
     if (dateRange?.from) {
-      q = query(q, where('date', '>=', format(dateRange.from, 'yyyy-MM-dd')));
+      filters.push(where('date', '>=', format(dateRange.from, 'yyyy-MM-dd')));
     }
     if (dateRange?.to) {
-      q = query(q, where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
+      filters.push(where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
     }
-    
+
+    if (filters.length > 0) {
+        q = query(q, ...filters);
+    }
+
     return q;
   }, [firestore, employeeId, department, dateRange, departmentEmployeeIds, isDepartmentLoading]);
   
@@ -198,3 +209,5 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     </div>
   );
 }
+
+    
