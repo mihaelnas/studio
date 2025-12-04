@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { Employee } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -23,6 +23,7 @@ const RowSkeleton = () => (
         </div>
       </div>
     </TableCell>
+    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
   </TableRow>
@@ -44,6 +45,7 @@ export function EmployeeList() {
         <TableHeader>
           <TableRow>
             <TableHead>Nom</TableHead>
+            <TableHead>ID Employé</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Département</TableHead>
           </TableRow>
@@ -53,7 +55,7 @@ export function EmployeeList() {
             Array.from({ length: 5 }).map((_, index) => <RowSkeleton key={index} />)
           ) : error ? (
              <TableRow>
-                <TableCell colSpan={3}>
+                <TableCell colSpan={4}>
                     <Alert variant="destructive" className="m-4">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Erreur de Chargement</AlertTitle>
@@ -67,19 +69,19 @@ export function EmployeeList() {
                 <TableCell>
                   <Link href={`/employees/${employee.id}`} className="flex items-center gap-3 hover:underline">
                     <Avatar className="h-9 w-9">
-                      
-                      <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                      <AvatarFallback>{employee.name ? employee.name.split(' ').map(n => n[0]).join('') : 'EM'}</AvatarFallback>
                     </Avatar>
                     <span className="font-medium">{employee.name}</span>
                   </Link>
                 </TableCell>
+                <TableCell className="text-muted-foreground">{employee.id}</TableCell>
                 <TableCell className="text-muted-foreground">{employee.email}</TableCell>
                 <TableCell>{employee.department}</TableCell>
               </TableRow>
             ))
           ) : (
              <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                     Aucun employé trouvé. Traitez un fichier de logs pour les ajouter automatiquement.
                 </TableCell>
             </TableRow>
