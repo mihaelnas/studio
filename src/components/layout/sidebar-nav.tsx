@@ -15,7 +15,7 @@ const navItems = [
   { href: "/import", label: "Importer Logs", icon: Upload },
   { href: "/logs", label: "Logs Bruts", icon: History },
   { href: "/processing", label: "Traitement", icon: Cog },
-  { href: "/analyses", label: "Analyses", icon: BarChart },
+  { href: "/dashboard", label: "Analyses (désactivé)", icon: BarChart },
 ];
 
 export function SidebarNav() {
@@ -24,12 +24,13 @@ export function SidebarNav() {
   return (
     <SidebarMenu>
       {navItems.map((item) => (
-        <SidebarMenuItem key={item.href}>
+        <SidebarMenuItem key={item.href + item.label}>
           <SidebarMenuButton
             asChild
-            isActive={pathname.startsWith(item.href)}
+            isActive={pathname.startsWith(item.href) && item.label !== 'Analyses (désactivé)'}
             className="w-full justify-start"
             tooltip={{children: item.label, side: "right", align: "center"}}
+            disabled={item.label === 'Analyses (désactivé)'}
           >
             <Link href={item.href}>
               <item.icon className="h-5 w-5 shrink-0" />
