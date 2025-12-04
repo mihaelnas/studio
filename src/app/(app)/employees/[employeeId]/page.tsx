@@ -4,7 +4,7 @@
 
 import { notFound, useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ProcessedAttendanceTable } from '@/app/(app)/analyses/processed-attendance-table';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -13,7 +13,9 @@ import { doc } from 'firebase/firestore';
 import type { Employee } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Pencil } from 'lucide-react';
+import { EmployeeEditDialog } from './edit-dialog';
+import { Button } from '@/components/ui/button';
 
 
 const getRiskBadgeVariant = (risk?: 'Élevé' | 'Moyen' | 'Faible') => {
@@ -92,21 +94,30 @@ export default function EmployeeProfilePage() {
   return (
     <div className="flex flex-col gap-8">
       <Card>
-        <CardHeader className="flex flex-row items-center gap-4">
-          <Avatar className="h-20 w-20 border">
-            
-            <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-          </Avatar>
-          <div className="grid gap-1">
-            <CardTitle className="text-3xl">{employee.name}</CardTitle>
-            <CardDescription className="text-base">{employee.department}</CardDescription>
-            <div className="flex items-center gap-2 pt-1">
-                <span className="text-sm text-muted-foreground">Risque de retard:</span>
-                <Badge variant={getRiskBadgeVariant(employee.latenessRisk)}>
-                    {employee.latenessRisk || 'N/A'}
-                </Badge>
+        <CardHeader>
+            <div className="flex items-start justify-between">
+                <div className="flex flex-row items-center gap-4">
+                    <Avatar className="h-20 w-20 border">
+                        <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    </Avatar>
+                    <div className="grid gap-1">
+                        <CardTitle className="text-3xl">{employee.name}</CardTitle>
+                        <CardDescription className="text-base">{employee.department}</CardDescription>
+                        <div className="flex items-center gap-2 pt-1">
+                            <span className="text-sm text-muted-foreground">Risque de retard:</span>
+                            <Badge variant={getRiskBadgeVariant(employee.latenessRisk)}>
+                                {employee.latenessRisk || 'N/A'}
+                            </Badge>
+                        </div>
+                    </div>
+                </div>
+                <EmployeeEditDialog employee={employee}>
+                    <Button variant="outline">
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Modifier
+                    </Button>
+                </EmployeeEditDialog>
             </div>
-          </div>
         </CardHeader>
       </Card>
       
@@ -124,3 +135,4 @@ export default function EmployeeProfilePage() {
     </div>
   );
 }
+

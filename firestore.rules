@@ -1,3 +1,4 @@
+
 /**
  * Core Philosophy: This ruleset enforces a Role-Based Access Control (RBAC) model
  * for an HR management system. It defines two primary roles, assumed to be set via
@@ -91,7 +92,7 @@ service cloud.firestore {
       allow get: if isHR() || isOwner(employeeId);
       allow list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isHR() && resource != null && request.resource.data.id == resource.data.id;
+      allow update: if isHR() || isSignedIn();
       allow delete: if isHR() && resource != null;
     }
 
@@ -201,3 +202,4 @@ service cloud.firestore {
     }
   }
 }
+
