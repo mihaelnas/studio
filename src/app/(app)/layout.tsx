@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
 import { AppHeader } from "@/components/layout/header";
-import { SidebarNav } from "@/components/ui/sidebar-nav";
+import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Stethoscope, LogOut, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FirebaseClientProvider, useFirebase } from "@/firebase";
