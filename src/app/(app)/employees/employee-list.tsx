@@ -10,7 +10,9 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Pencil } from 'lucide-react';
+import { EmployeeEditDialog } from './[employeeId]/edit-dialog';
+import { Button } from '@/components/ui/button';
 
 const RowSkeleton = () => (
   <TableRow>
@@ -26,6 +28,7 @@ const RowSkeleton = () => (
     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+    <TableCell><Skeleton className="h-10 w-24" /></TableCell>
   </TableRow>
 );
 
@@ -48,6 +51,7 @@ export function EmployeeList() {
             <TableHead>ID Employé</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Département</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -55,7 +59,7 @@ export function EmployeeList() {
             Array.from({ length: 5 }).map((_, index) => <RowSkeleton key={index} />)
           ) : error ? (
              <TableRow>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={5}>
                     <Alert variant="destructive" className="m-4">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Erreur de Chargement</AlertTitle>
@@ -77,11 +81,19 @@ export function EmployeeList() {
                 <TableCell className="text-muted-foreground">{employee.id}</TableCell>
                 <TableCell className="text-muted-foreground">{employee.email}</TableCell>
                 <TableCell>{employee.department}</TableCell>
+                <TableCell className="text-right">
+                  <EmployeeEditDialog employee={employee}>
+                    <Button variant="outline" size="sm">
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Modifier
+                    </Button>
+                  </EmployeeEditDialog>
+                </TableCell>
               </TableRow>
             ))
           ) : (
              <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                     Aucun employé trouvé. Traitez un fichier de logs pour les ajouter automatiquement.
                 </TableCell>
             </TableRow>
