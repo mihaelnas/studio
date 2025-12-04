@@ -1,13 +1,12 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { ProcessedAttendance } from "@/lib/types";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useFirebase } from "@/firebase";
+import { collection, query, where, orderBy, getDocs, FirestoreError } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -46,18 +45,37 @@ const RowSkeleton = () => (
 
 export function ProcessedAttendanceTable({ employeeId }: FilteredTableProps) {
   const { firestore } = useFirebase();
+  const [data, setData] = useState<ProcessedAttendance[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<FirestoreError | null>(null);
 
-  const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-        collection(firestore, 'processedAttendance'), 
-        where('employee_id', '==', employeeId),
-        orderBy('date', 'desc')
-    );
+
+  useEffect(() => {
+    if (!firestore || !employeeId) return;
+
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const attendanceQuery = query(
+                collection(firestore, 'processedAttendance'), 
+                where('employee_id', '==', employeeId),
+                orderBy('date', 'desc')
+            );
+            const snapshot = await getDocs(attendanceQuery);
+            const attendanceData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProcessedAttendance));
+            setData(attendanceData);
+            setError(null);
+        } catch (err) {
+            console.error(err);
+            setError(err as FirestoreError);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchData();
   }, [firestore, employeeId]);
   
-  const { data, isLoading, error } = useCollection<ProcessedAttendance>(attendanceQuery);
-
   const showNoDataMessage = !isLoading && !error && (!data || data.length === 0);
 
   return (
@@ -96,7 +114,7 @@ export function ProcessedAttendanceTable({ employeeId }: FilteredTableProps) {
                     </TableCell>
                 </TableRow>
             ) : (
-                data.map((record) => (
+                data?.map((record) => (
                     <TableRow key={record.id}>
                     <TableCell>{record.date}</TableCell>
                     <TimeCell time={record.morning_in} />

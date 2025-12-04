@@ -1,13 +1,12 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { ProcessedAttendance } from "@/lib/types";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from 'firebase/firestore';
+import { useFirebase } from "@/firebase";
+import { collection, query, orderBy, getDocs, FirestoreError } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -41,17 +40,36 @@ const RowSkeleton = () => (
 
 export function ProcessedAttendanceTable() {
   const { firestore } = useFirebase();
+  const [data, setData] = useState<ProcessedAttendance[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<FirestoreError | null>(null);
 
-  const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-        collection(firestore, 'processedAttendance'), 
-        orderBy('date', 'desc')
-    );
+
+  useEffect(() => {
+    if (!firestore) return;
+
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const attendanceQuery = query(
+                collection(firestore, 'processedAttendance'), 
+                orderBy('date', 'desc')
+            );
+            const snapshot = await getDocs(attendanceQuery);
+            const attendanceData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProcessedAttendance));
+            setData(attendanceData);
+            setError(null);
+        } catch (err) {
+            console.error(err);
+            setError(err as FirestoreError);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchData();
   }, [firestore]);
   
-  const { data, isLoading, error } = useCollection<ProcessedAttendance>(attendanceQuery);
-
   const showNoDataMessage = !isLoading && !error && (!data || data.length === 0);
 
   return (
@@ -80,7 +98,7 @@ export function ProcessedAttendanceTable() {
                         <Alert variant="destructive" className="m-4">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertTitle>Erreur de Chargement</AlertTitle>
-                            <AlertDescription>Impossible de charger l'historique des présences.</AlertDescription>
+                            <AlertDescription>Impossible de charger l'historique des présences. Les permissions sont peut-être insuffisantes.</AlertDescription>
                         </Alert>
                     </TableCell>
                 </TableRow>
@@ -91,7 +109,7 @@ export function ProcessedAttendanceTable() {
                     </TableCell>
                 </TableRow>
             ) : (
-                data.map((record) => (
+                data?.map((record) => (
                     <TableRow key={record.id}>
                     <TableCell>
                         <Link href={`/employees/${record.employee_id}`} className="hover:underline font-medium">
@@ -125,3 +143,4 @@ export function ProcessedAttendanceTable() {
     </div>
   );
 }
+

@@ -1,12 +1,12 @@
 
+
 'use client';
 
 import { useParams, notFound, useRouter } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirebase, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, FirestoreError } from 'firebase/firestore';
 import type { Employee, ProcessedAttendance } from '@/lib/types';
 import { format, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -76,25 +76,41 @@ export default function PayslipPage() {
     const { employeeId, year, month } = params;
     const { firestore } = useFirebase();
 
+    const [attendance, setAttendance] = useState<ProcessedAttendance[] | null>(null);
+    const [attendanceLoading, setAttendanceLoading] = useState(true);
+    const [attendanceError, setAttendanceError] = useState<FirestoreError | null>(null);
+
     const employeeDocRef = useMemoFirebase(() => 
         firestore && employeeId ? doc(firestore, 'employees', employeeId as string) : null,
         [firestore, employeeId]
     );
-
-    const attendanceQuery = useMemoFirebase(() => {
-        if (!firestore || !year || !month) return null;
-        const startDate = format(new Date(Number(year), Number(month) - 1, 1), 'yyyy-MM-dd');
-        const endDate = format(new Date(Number(year), Number(month), 0), 'yyyy-MM-dd');
-        return query(
-            collection(firestore, 'processedAttendance'),
-            where('employee_id', '==', employeeId),
-            where('date', '>=', startDate),
-            where('date', '<=', endDate)
-        );
-    }, [firestore, employeeId, year, month]);
-
     const { data: employee, isLoading: employeeLoading, error: employeeError } = useDoc<Employee>(employeeDocRef);
-    const { data: attendance, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
+
+    useEffect(() => {
+        if (!firestore || !year || !month || !employeeId) return;
+        const fetchData = async () => {
+            setAttendanceLoading(true);
+            try {
+                const startDate = format(new Date(Number(year), Number(month) - 1, 1), 'yyyy-MM-dd');
+                const endDate = format(new Date(Number(year), Number(month), 0), 'yyyy-MM-dd');
+                const q = query(
+                    collection(firestore, 'processedAttendance'),
+                    where('employee_id', '==', employeeId),
+                    where('date', '>=', startDate),
+                    where('date', '<=', endDate)
+                );
+                const snapshot = await getDocs(q);
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProcessedAttendance));
+                setAttendance(data);
+                setAttendanceError(null);
+            } catch (err) {
+                setAttendanceError(err as FirestoreError);
+            } finally {
+                setAttendanceLoading(false);
+            }
+        };
+        fetchData();
+    }, [firestore, employeeId, year, month]);
 
     const payslipData: PayslipData | null = useMemo(() => {
         if (!employee || !attendance) return null;
@@ -243,3 +259,4 @@ export default function PayslipPage() {
         </div>
     );
 }
+
