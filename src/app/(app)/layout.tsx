@@ -4,7 +4,6 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useRouter } from 'next/navigation';
-import Image from "next/image";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
 import { AppHeader } from "@/components/layout/header";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -57,10 +56,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader className="p-2">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-white p-1">
-                <Image src="https://storage.googleapis.com/stey-prod-public/Lottie/TimeSense%20HR.png" width={36} height={36} alt="TimeSense HR logo" className="object-contain" />
-            </div>
+          <div className="flex items-center gap-2.5 px-2">
             <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">TimeSense HR</h1>
           </div>
         </SidebarHeader>
