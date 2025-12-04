@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useMemo, useEffect, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { ProcessedAttendance } from "@/lib/types";
+import type { ProcessedAttendance, Employee } from "@/lib/types";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirebase, useMemoFirebase } from "@/firebase";
 import { collection, query, where, orderBy, DocumentData, getDocs, Query } from 'firebase/firestore';
@@ -53,23 +53,28 @@ interface ProcessedAttendanceTableProps {
 export function ProcessedAttendanceTable({ employeeId, department, dateRange }: ProcessedAttendanceTableProps) {
   const { firestore } = useFirebase();
   const [departmentEmployeeIds, setDepartmentEmployeeIds] = useState<string[] | null>(null);
+  const [isDepartmentLoading, setIsDepartmentLoading] = useState(false);
 
   useEffect(() => {
     if (department && firestore) {
+        setIsDepartmentLoading(true);
         const fetchEmployeeIds = async () => {
             const q = query(collection(firestore, 'employees'), where('department', '==', department));
             const snapshot = await getDocs(q);
             const ids = snapshot.docs.map(doc => doc.id);
             setDepartmentEmployeeIds(ids);
+            setIsDepartmentLoading(false);
         };
         fetchEmployeeIds();
     } else {
         setDepartmentEmployeeIds(null);
+        setIsDepartmentLoading(false);
     }
   }, [department, firestore]);
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;
+    if (department && isDepartmentLoading) return null; // Wait for department employee IDs
     if (department && departmentEmployeeIds?.length === 0) return null; // No employees in dept, so no query needed
 
     const constraints = [];
@@ -86,11 +91,20 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
         constraints.push(where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
     }
 
+    // Only return a query if there is at least one filter other than the date.
+    // This prevents loading all attendance data by default.
+    if (constraints.length === 0 && !dateRange) {
+        // Or if you want to show last 30 days by default even with no filter
+        // return query(collection(firestore, 'processedAttendance'), orderBy('date', 'desc'));
+        return null;
+    }
+
+
     const baseQuery = collection(firestore, 'processedAttendance');
     const finalQuery = query(baseQuery, ...constraints, orderBy('date', 'desc'));
 
     return finalQuery;
-  }, [firestore, employeeId, department, dateRange, departmentEmployeeIds]);
+  }, [firestore, employeeId, department, dateRange, departmentEmployeeIds, isDepartmentLoading]);
 
   const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery as Query<ProcessedAttendance> | null);
   
@@ -109,7 +123,7 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     }));
   }, [attendanceData, employees]);
 
-  const isLoading = attendanceLoading || employeesLoading || (department && departmentEmployeeIds === null);
+  const isLoading = attendanceLoading || employeesLoading || isDepartmentLoading;
   const error = attendanceError || employeesError;
 
   return (
