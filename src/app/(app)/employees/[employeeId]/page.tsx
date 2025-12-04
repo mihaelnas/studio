@@ -1,4 +1,3 @@
-
 'use client';
 
 import { notFound, useParams } from 'next/navigation';
@@ -95,7 +94,7 @@ export default function EmployeeProfilePage() {
       <Card>
         <CardHeader>
             <div className="flex items-start justify-between">
-                <div className="flex flex-row items-center gap-4">
+                <div className="flex items-center gap-4">
                     <Avatar className="h-20 w-20 border">
                         <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                     </Avatar>
