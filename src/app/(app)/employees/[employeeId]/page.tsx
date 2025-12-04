@@ -1,3 +1,4 @@
+
 'use client';
 
 import { notFound, useParams } from 'next/navigation';
@@ -92,30 +93,28 @@ export default function EmployeeProfilePage() {
   return (
     <div className="flex flex-col gap-8">
       <Card>
-        <CardHeader>
-            <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                    <Avatar className="h-20 w-20 border">
-                        <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <div className="grid gap-1">
-                        <CardTitle className="text-3xl">{employee.name}</CardTitle>
-                        <CardDescription className="text-base">{employee.department}</CardDescription>
-                        <div className="flex items-center gap-2 pt-1">
-                            <span className="text-sm text-muted-foreground">Risque de retard:</span>
-                            <Badge variant={getRiskBadgeVariant(employee.latenessRisk)}>
-                                {employee.latenessRisk || 'N/A'}
-                            </Badge>
-                        </div>
+        <CardHeader className="flex flex-row items-start justify-between">
+            <div className="flex items-center gap-4">
+                <Avatar className="h-20 w-20 border">
+                    <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                </Avatar>
+                <div className="grid gap-1">
+                    <CardTitle className="text-3xl">{employee.name}</CardTitle>
+                    <CardDescription className="text-base">{employee.department}</CardDescription>
+                    <div className="flex items-center gap-2 pt-1">
+                        <span className="text-sm text-muted-foreground">Risque de retard:</span>
+                        <Badge variant={getRiskBadgeVariant(employee.latenessRisk)}>
+                            {employee.latenessRisk || 'N/A'}
+                        </Badge>
                     </div>
                 </div>
-                <EmployeeEditDialog employee={employee}>
-                    <Button variant="outline">
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Modifier
-                    </Button>
-                </EmployeeEditDialog>
             </div>
+            <EmployeeEditDialog employee={employee}>
+                <Button variant="outline">
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Modifier
+                </Button>
+            </EmployeeEditDialog>
         </CardHeader>
       </Card>
       
