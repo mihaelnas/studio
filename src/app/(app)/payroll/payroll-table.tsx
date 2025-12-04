@@ -4,7 +4,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 import { useFirebase } from '@/firebase';
@@ -22,10 +21,7 @@ const formatCurrency = (value: number) => {
 const RowSkeleton = () => (
     <TableRow>
         <TableCell>
-            <div className="flex items-center gap-3">
-                <Skeleton className="h-9 w-9 rounded-full" />
-                <Skeleton className="h-4 w-32" />
-            </div>
+            <Skeleton className="h-5 w-32" />
         </TableCell>
         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
         <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -38,7 +34,6 @@ const RowSkeleton = () => (
 interface PayrollData {
   employeeId: string;
   name: string;
-  avatarUrl?: string;
   department: string;
   totalHours: number;
   totalOvertime: number;
@@ -93,7 +88,6 @@ export function PayrollTable() {
                     return {
                         employeeId: employee.id,
                         name: employee.name,
-                        avatarUrl: employee.avatarUrl,
                         department: employee.department,
                         totalHours: data.totalHours,
                         totalOvertime: data.overtimeHours,
@@ -145,12 +139,8 @@ export function PayrollTable() {
             payrollData.map((payroll) => (
               <TableRow key={payroll.employeeId}>
                 <TableCell>
-                  <Link href={`/employees/${payroll.employeeId}`} className="flex items-center gap-3 hover:underline">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={payroll.avatarUrl} alt={payroll.name} />
-                      <AvatarFallback>{payroll.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium">{payroll.name}</span>
+                  <Link href={`/employees/${payroll.employeeId}`} className="font-medium hover:underline">
+                    {payroll.name}
                   </Link>
                 </TableCell>
                 <TableCell>{payroll.department}</TableCell>

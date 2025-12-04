@@ -10,9 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { ShiftEditDialog } from './shift-edit-dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, FirestoreError } from 'firebase/firestore';
+import { collection, query, where, getDocs, FirestoreError, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -34,12 +33,9 @@ const getShiftBadgeVariant = (shiftType: ShiftType) => {
 const RowSkeleton = ({ weekDays }: { weekDays: Date[] }) => (
     <TableRow>
         <TableCell>
-            <div className="flex items-center gap-3">
-                <Skeleton className="h-9 w-9 rounded-full" />
-                <div className="space-y-1">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-24" />
-                </div>
+            <div className="space-y-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-24" />
             </div>
         </TableCell>
         {weekDays.map(day => <TableCell key={day.toString()}><Skeleton className="h-10 w-full" /></TableCell>)}
@@ -172,16 +168,10 @@ export function SchedulePlanner() {
                 employees.map((employee: Employee) => (
                 <TableRow key={employee.id}>
                     <TableCell>
-                    <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={employee.avatarUrl} alt={employee.name} />
-                          <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                        </Avatar>
                         <div>
                             <div className="font-medium">{employee.name}</div>
                             <div className="text-xs text-muted-foreground">{employee.department}</div>
                         </div>
-                    </div>
                     </TableCell>
                     {weekDays.map((day) => {
                     const shift = getShiftForEmployeeAndDay(employee.id, day);

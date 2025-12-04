@@ -4,7 +4,6 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { ManualCorrection, Employee } from '@/lib/types';
@@ -18,10 +17,7 @@ import { AlertTriangle } from 'lucide-react';
 const RowSkeleton = () => (
   <TableRow>
     <TableCell>
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-9 w-9 rounded-full" />
-        <Skeleton className="h-4 w-24" />
-      </div>
+      <Skeleton className="h-4 w-24" />
     </TableCell>
     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
@@ -64,8 +60,6 @@ export function HistoryTable() {
         ...c,
         employeeName: employee?.name || 'Inconnu',
         adminName: adminName,
-        adminAvatarUrl: correctedByUser?.avatarUrl,
-        adminInitials: adminName.split(' ').map(n => n[0]).join(''),
         timestamp: timestampStr,
         date: c.correctionDate ? format(new Date(c.correctionDate), "PPP", { locale: fr }) : 'N/A',
       };
@@ -109,13 +103,7 @@ export function HistoryTable() {
             formattedData.map((correction) => (
               <TableRow key={correction.id}>
                 <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={correction.adminAvatarUrl} alt={correction.adminName} />
-                      <AvatarFallback>{correction.adminInitials}</AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium">{correction.adminName}</span>
-                  </div>
+                  <span className="font-medium">{correction.adminName}</span>
                 </TableCell>
                 <TableCell>
                     <Link href={`/employees/${correction.employeeId}`} className="hover:underline">{correction.employeeName}</Link>
