@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import type { ProcessedAttendance, Employee } from "@/lib/types";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy, DocumentData, getDocs, Query, endAt, startAt } from 'firebase/firestore';
+import { collection, query, where, DocumentData, getDocs, Query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -79,7 +79,7 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    if (department && isDepartmentLoading) return null; // Wait for department employee IDs to load
+    if (department && isDepartmentLoading) return null;
 
     let q: Query = collection(firestore, 'processedAttendance');
 
@@ -90,7 +90,6 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
       if(departmentEmployeeIds.length > 0) {
         filters.push(where('employee_id', 'in', departmentEmployeeIds));
       } else {
-        // No employees in department, so return no results
         filters.push(where('employee_id', '==', 'no-employee-found'));
       }
     }
@@ -105,14 +104,15 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     if (filters.length > 0) {
         q = query(q, ...filters);
     }
-
+    
+    // IMPORTANT: No orderBy in the query. Sorting is now done client-side.
     return q;
   }, [firestore, employeeId, department, dateRange, departmentEmployeeIds, isDepartmentLoading]);
   
   const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
   
   const employeesQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'employees'), orderBy('name')) : null, 
+    firestore ? query(collection(firestore, 'employees')) : null, 
     [firestore]
   );
   const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<EmployeeForTable>(employeesQuery);
@@ -126,7 +126,7 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
         employee_name: employeeMap.get(record.employee_id) || record.employee_id,
     }));
 
-    // Sort client-side
+    // Perform client-side sorting by date
     return mappedData.sort((a, b) => compareDesc(new Date(a.date), new Date(b.date)));
 
   }, [attendanceData, employees]);
@@ -209,5 +209,3 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     </div>
   );
 }
-
-    
