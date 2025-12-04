@@ -2,16 +2,18 @@
 "use client";
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { ProcessedAttendance } from "@/lib/types";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy, DocumentData } from 'firebase/firestore';
+import { collection, query, where, orderBy, DocumentData, getDocs, Query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import type { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
 
 const TimeCell = ({ time }: { time: string | null }) => (
     <TableCell className="text-center">{time || 'N/A'}</TableCell>
@@ -25,8 +27,7 @@ const MinuteCell = ({ value, positiveColor = "text-amber-600", destructiveColor 
     return <span className="text-green-600">0 min</span>;
 }
 
-// Simplified Employee type for this component
-type EmployeeForTable = { id: string; name: string };
+type EmployeeForTable = { id: string; name: string; department: string };
 
 const RowSkeleton = ({ hasEmployeeColumn }: { hasEmployeeColumn: boolean }) => (
     <TableRow>
@@ -43,19 +44,55 @@ const RowSkeleton = ({ hasEmployeeColumn }: { hasEmployeeColumn: boolean }) => (
     </TableRow>
 );
 
-export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }) {
+interface ProcessedAttendanceTableProps {
+    employeeId?: string;
+    department?: string;
+    dateRange?: DateRange;
+}
+
+export function ProcessedAttendanceTable({ employeeId, department, dateRange }: ProcessedAttendanceTableProps) {
   const { firestore } = useFirebase();
+  const [departmentEmployeeIds, setDepartmentEmployeeIds] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (department && firestore) {
+        const fetchEmployeeIds = async () => {
+            const q = query(collection(firestore, 'employees'), where('department', '==', department));
+            const snapshot = await getDocs(q);
+            const ids = snapshot.docs.map(doc => doc.id);
+            setDepartmentEmployeeIds(ids);
+        };
+        fetchEmployeeIds();
+    } else {
+        setDepartmentEmployeeIds(null);
+    }
+  }, [department, firestore]);
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    let baseQuery: DocumentData = collection(firestore, 'processedAttendance');
-    if (employeeId) {
-      baseQuery = query(baseQuery, where('employee_id', '==', employeeId));
-    }
-    return query(baseQuery, orderBy('date', 'desc'));
-  }, [firestore, employeeId]);
+    if (department && departmentEmployeeIds?.length === 0) return null; // No employees in dept, so no query needed
 
-  const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
+    const constraints = [];
+    if (employeeId) {
+        constraints.push(where('employee_id', '==', employeeId));
+    } else if (department && departmentEmployeeIds) {
+        constraints.push(where('employee_id', 'in', departmentEmployeeIds));
+    }
+
+    if (dateRange?.from) {
+        constraints.push(where('date', '>=', format(dateRange.from, 'yyyy-MM-dd')));
+    }
+    if (dateRange?.to) {
+        constraints.push(where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
+    }
+
+    const baseQuery = collection(firestore, 'processedAttendance');
+    const finalQuery = query(baseQuery, ...constraints, orderBy('date', 'desc'));
+
+    return finalQuery;
+  }, [firestore, employeeId, department, dateRange, departmentEmployeeIds]);
+
+  const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery as Query<ProcessedAttendance> | null);
   
   const employeesQuery = useMemoFirebase(() => 
     firestore ? collection(firestore, 'employees') : null, 
@@ -72,7 +109,7 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
     }));
   }, [attendanceData, employees]);
 
-  const isLoading = attendanceLoading || employeesLoading;
+  const isLoading = attendanceLoading || employeesLoading || (department && departmentEmployeeIds === null);
   const error = attendanceError || employeesError;
 
   return (
@@ -101,14 +138,14 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
                         <Alert variant="destructive" className="m-4">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertTitle>Erreur de Chargement</AlertTitle>
-                            <AlertDescription>Impossible de charger les données de présence.</AlertDescription>
+                            <AlertDescription>Impossible de charger les données de présence. Vérifiez les permissions de la console.</AlertDescription>
                         </Alert>
                     </TableCell>
                 </TableRow>
             ) : data.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={employeeId ? 9 : 10} className="h-24 text-center">
-                    Aucune donnée de présence traitée pour le moment.
+                    Aucune donnée de présence traitée ne correspond à vos filtres.
                     </TableCell>
                 </TableRow>
             ) : (
@@ -148,5 +185,3 @@ export function ProcessedAttendanceTable({ employeeId }: { employeeId?: string }
     </div>
   );
 }
-
-    
