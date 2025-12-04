@@ -144,7 +144,19 @@ export default function PayslipPage() {
     }
     
     if (!payslipData) {
-        notFound();
+        return (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+                <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Aucune Donnée</AlertTitle>
+                    <AlertDescription>Aucune donnée de présence ou d'employé trouvée pour générer cette fiche de paie.</AlertDescription>
+                </Alert>
+                 <Button variant="outline" onClick={() => router.back()}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Retour
+                </Button>
+            </div>
+        )
     }
     
     return (

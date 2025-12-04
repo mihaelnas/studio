@@ -111,7 +111,7 @@ export function PayrollTable() {
   const handlePreviewClick = (employeeId: string) => {
     const year = new Date().getFullYear();
     const month = new Date().getMonth() + 1;
-    router.push(`/payroll/${employeeId}/${year}/${month}`);
+    router.push(`/payslips/${employeeId}/${year}/${month}`);
   };
 
   return (
