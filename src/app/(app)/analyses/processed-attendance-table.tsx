@@ -74,12 +74,12 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    if (department && isDepartmentLoading) return null; // Attendre la fin du chargement des IDs
-    if (department && !isDepartmentLoading && departmentEmployeeIds?.length === 0) return null; // Pas d'employés dans le département
+    if (department && isDepartmentLoading) return null;
+    if (department && !isDepartmentLoading && departmentEmployeeIds?.length === 0) return null;
 
-    let q = query(collection(firestore, 'processedAttendance'), orderBy('date', 'desc'));
-
+    const baseCollection = collection(firestore, 'processedAttendance');
     let constraints = [];
+
     if (employeeId) {
       constraints.push(where('employee_id', '==', employeeId));
     } else if (department && departmentEmployeeIds && departmentEmployeeIds.length > 0) {
@@ -93,12 +93,8 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
         constraints.push(where('date', '<=', format(dateRange.to, 'yyyy-MM-dd')));
     }
     
-    // Appliquer les contraintes s'il y en a, sinon utiliser la requête de base
-    if (constraints.length > 0) {
-        q = query(collection(firestore, 'processedAttendance'), ...constraints, orderBy('date', 'desc'));
-    }
-
-    return q;
+    // Final query assembly
+    return query(baseCollection, ...constraints, orderBy('date', 'desc'));
 
   }, [firestore, employeeId, department, dateRange, departmentEmployeeIds, isDepartmentLoading]);
 
@@ -199,5 +195,3 @@ export function ProcessedAttendanceTable({ employeeId, department, dateRange }: 
     </div>
   );
 }
-
-    
