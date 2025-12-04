@@ -1,8 +1,8 @@
-
 "use client";
 
 import { useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Employee, ProcessedAttendance } from '@/lib/types';
@@ -11,7 +11,8 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Eye } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PayrollEntry {
   employeeId: string;
@@ -80,12 +81,14 @@ const RowSkeleton = () => (
         <TableCell><Skeleton className="h-4 w-full" /></TableCell>
         <TableCell><Skeleton className="h-4 w-full" /></TableCell>
         <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+        <TableCell><Skeleton className="h-10 w-24" /></TableCell>
     </TableRow>
 );
 
 
 export function PayrollTable() {
   const { firestore } = useFirebase();
+  const router = useRouter();
 
   const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
   const attendanceQuery = useMemoFirebase(() => {
@@ -105,6 +108,12 @@ export function PayrollTable() {
   const isLoading = employeesLoading || attendanceLoading;
   const error = employeesError || attendanceError;
 
+  const handlePreviewClick = (employeeId: string) => {
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth() + 1;
+    router.push(`/payroll/${employeeId}/${year}/${month}`);
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -116,6 +125,7 @@ export function PayrollTable() {
             <TableHead className="text-right">Heures Travaillées</TableHead>
             <TableHead className="text-right">Heures Supp.</TableHead>
             <TableHead className="text-right">Salaire Brut Estimé</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -123,7 +133,7 @@ export function PayrollTable() {
             Array.from({ length: 5 }).map((_, i) => <RowSkeleton key={i} />)
           ) : error ? (
             <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                     <Alert variant="destructive" className="m-4">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Erreur de Chargement</AlertTitle>
@@ -133,7 +143,7 @@ export function PayrollTable() {
             </TableRow>
           ) : payrollData.length === 0 ? (
              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                     Aucune donnée de paie à calculer pour le mois en cours.
                 </TableCell>
             </TableRow>
@@ -157,6 +167,12 @@ export function PayrollTable() {
                 <TableCell className="text-right">{entry.totalHours.toFixed(2)} h</TableCell>
                 <TableCell className="text-right">{entry.overtimeHours.toFixed(2)} h</TableCell>
                 <TableCell className="text-right font-semibold">{formatCurrency(entry.grossSalary)}</TableCell>
+                <TableCell className="text-right">
+                  <Button variant="outline" size="sm" onClick={() => handlePreviewClick(entry.employeeId)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Aperçu
+                  </Button>
+                </TableCell>
               </TableRow>
             ))
           )}
