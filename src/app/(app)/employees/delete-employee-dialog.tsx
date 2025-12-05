@@ -40,6 +40,7 @@ export function DeleteEmployeeDialog({ employee }: DeleteEmployeeDialogProps) {
     toast({
       title: "Employé Supprimé",
       description: `Le profil de ${employee.name} a été supprimé avec succès.`,
+      variant: "destructive"
     });
     setIsOpen(false);
   };

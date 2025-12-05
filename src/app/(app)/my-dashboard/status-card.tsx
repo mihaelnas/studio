@@ -6,11 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useFirebase, useMemoFirebase } from "@/firebase";
 import { collection, query, where, orderBy, limit, onSnapshot, getDocs } from 'firebase/firestore';
-import type { AttendanceLog } from '@/lib/types';
+import type { AttendanceLog, Employee } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, LogIn, LogOut } from 'lucide-react';
 import { format, differenceInSeconds, parseISO } from 'date-fns';
+import { useCollection } from '@/firebase/firestore/use-collection';
 
 const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -28,23 +29,28 @@ export function StatusCard() {
   const [error, setError] = useState<Error | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
 
+  const employeeQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'employees'), where('authUid', '==', user.uid), limit(1));
+  }, [firestore, user]);
+  
+  const { data: employeeData, isLoading: employeeLoading } = useCollection<Employee>(employeeQuery);
+  const employee = employeeData?.[0];
+
   useEffect(() => {
-    if (!firestore || !user) {
+    if (!firestore || !employee?.employeeId) {
         setIsLoading(false);
         return;
     }
 
     const q = query(
         collection(firestore, 'attendanceLogs'),
-        where('personnelId', '==', user.uid),
-        // We remove the orderBy clause to avoid needing a composite index.
-        // We will fetch a larger set and sort client-side.
+        where('personnelId', '==', employee.employeeId),
         limit(50) 
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
-            // Sort client-side to find the most recent log
             const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog));
             const sortedLogs = logs.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
             setLastLog(sortedLogs[0]);
@@ -59,7 +65,7 @@ export function StatusCard() {
     });
 
     return () => unsubscribe();
-  }, [firestore, user]);
+  }, [firestore, employee]);
 
 
   useEffect(() => {
@@ -94,7 +100,7 @@ export function StatusCard() {
         <CardDescription>Votre dernier pointage et temps de présence aujourd'hui.</CardDescription>
       </CardHeader>
       <CardContent className="flex items-center justify-between">
-        {isLoading ? (
+        {isLoading || employeeLoading ? (
             <Skeleton className="h-20 w-full" />
         ) : error ? (
             <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Erreur</AlertTitle><AlertDescription>Impossible de charger votre statut.</AlertDescription></Alert>

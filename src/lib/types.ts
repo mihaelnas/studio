@@ -3,8 +3,9 @@
 import type { Timestamp } from 'firebase/firestore';
 
 export type Employee = {
-  id: string;
-  authUid?: string; // Link to Firebase Auth user
+  id: string; // This is the Firestore document ID, which should be the authUid
+  authUid: string | null; // Link to Firebase Auth user
+  employeeId: string; // This is the ID from the biometric device
   name: string;
   email: string;
   avatarUrl?: string;
@@ -37,7 +38,7 @@ export type ManualCorrection = {
 
 export type Schedule = {
   id: string;
-  employeeId: string;
+  employeeId: string; // This should be the authUid
   date: Date | string; // Can be Date object or 'YYYY-MM-DD' string from Firestore
   taskDescription: string;
 };
@@ -45,7 +46,7 @@ export type Schedule = {
 export type AttendanceLog = {
     id: string;
     dateTime: string;
-    personnelId: string;
+    personnelId: string; // This is the ID from the biometric device
     firstName: string;
     lastName: string;
     cardNumber: string;
@@ -62,7 +63,7 @@ export type AttendanceLog = {
 
 export type ProcessedAttendance = {
     id: string;
-    employee_id: string;
+    employee_id: string; // This is the Firestore document ID (authUid)
     employee_name?: string; // Optional: denormalized for display
     date: string; // YYYY-MM-DD
     morning_in: string | null;

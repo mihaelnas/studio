@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useFirebase, useMemoFirebase } from '@/firebase';
-import type { AttendanceLog } from "@/lib/types";
+import type { AttendanceLog, Employee } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -55,23 +55,35 @@ const StatusBadge = ({ log }: { log: AttendanceLog }) => {
 export function MyLogsTable() {
   const { firestore, user } = useFirebase();
 
-  const attendanceLogsQuery = useMemoFirebase(() => {
+  const employeeQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
-        collection(firestore, "attendanceLogs"), 
-        where("personnelId", "==", user.uid),
-        // We remove the orderBy clause to avoid needing a composite index.
-        // Sorting will be done client-side.
-        limit(100)
+        collection(firestore, "employees"),
+        where("authUid", "==", user.uid),
+        limit(1)
     );
   }, [firestore, user]);
 
-  const { data: attendanceLogs, isLoading, error } = useCollection<AttendanceLog>(attendanceLogsQuery);
+  const { data: employeeData, isLoading: employeeLoading } = useCollection<Employee>(employeeQuery);
+  const employee = employeeData?.[0];
+
+  const attendanceLogsQuery = useMemoFirebase(() => {
+    if (!firestore || !employee?.employeeId) return null;
+    return query(
+        collection(firestore, "attendanceLogs"), 
+        where("personnelId", "==", employee.employeeId),
+        limit(100)
+    );
+  }, [firestore, employee]);
+
+  const { data: attendanceLogs, isLoading: logsLoading, error } = useCollection<AttendanceLog>(attendanceLogsQuery);
 
   const sortedLogs = useMemo(() => {
     if (!attendanceLogs) return [];
     return [...attendanceLogs].sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
   }, [attendanceLogs]);
+  
+  const isLoading = employeeLoading || logsLoading;
 
   return (
         <div className="rounded-md border">

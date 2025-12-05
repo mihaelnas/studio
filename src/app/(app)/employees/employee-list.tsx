@@ -49,7 +49,7 @@ export function EmployeeList() {
         <TableHeader>
           <TableRow>
             <TableHead>Nom</TableHead>
-            <TableHead>ID Employé</TableHead>
+            <TableHead>ID Appareil</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Département</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -79,7 +79,7 @@ export function EmployeeList() {
                     <span className="font-medium">{employee.name}</span>
                   </Link>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{employee.id}</TableCell>
+                <TableCell className="text-muted-foreground font-mono">{employee.employeeId}</TableCell>
                 <TableCell className="text-muted-foreground">{employee.email}</TableCell>
                 <TableCell>{employee.department}</TableCell>
                 <TableCell className="text-right space-x-2">
@@ -96,7 +96,7 @@ export function EmployeeList() {
           ) : (
              <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
-                    Aucun employé trouvé. Traitez un fichier de logs pour les ajouter automatiquement.
+                    Aucun employé trouvé. Commencez par en ajouter un.
                 </TableCell>
             </TableRow>
           )}

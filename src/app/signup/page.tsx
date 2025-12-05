@@ -22,10 +22,31 @@ import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { Stethoscope, Loader, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+
+const departments = [
+  "Non assigné",
+  "Cardiologie",
+  "Chirurgie",
+  "Pédiatrie",
+  "Radiologie",
+  "Urgence",
+  "Administration",
+  "Pharmacie"
+];
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit comporter au moins 2 caractères." }),
   email: z.string().email({ message: "Veuillez saisir une adresse e-mail valide." }),
+  employeeId: z.string().min(1, { message: "L'ID de l'appareil (biométrique) est requis." }),
+  department: z.string({ required_error: "Veuillez sélectionner un département." }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères." }),
   confirmPassword: z.string(),
 }).refine(data => data.password === data.confirmPassword, {
@@ -46,6 +67,8 @@ export default function SignupPage() {
     defaultValues: {
       name: "",
       email: "",
+      employeeId: "",
+      department: "Non assigné",
       password: "",
       confirmPassword: "",
     },
@@ -59,15 +82,16 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Create a corresponding employee document in Firestore
+      // Create a corresponding employee document in Firestore with the auth UID as document ID
       const employeeDocRef = doc(firestore, "employees", user.uid);
       await setDoc(employeeDocRef, {
-        id: user.uid, // Using auth UID as employee doc ID
+        id: user.uid, // Explicitly set doc id in data
         authUid: user.uid,
+        employeeId: values.employeeId, // The ID from the biometric device
         name: values.name,
         email: values.email,
-        department: "Non assigné",
-        hourlyRate: 25000,
+        department: values.department,
+        hourlyRate: 25000, // Default hourly rate
       });
 
       toast({
@@ -118,6 +142,19 @@ export default function SignupPage() {
                 </FormItem>
               )}
             />
+             <FormField
+              control={form.control}
+              name="employeeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ID Appareil Biométrique</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ex: 101" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="email"
@@ -127,6 +164,28 @@ export default function SignupPage() {
                   <FormControl>
                     <Input placeholder="nom@exemple.com" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="department"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Département</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionnez un département" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {departments.map(dep => (
+                        <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
