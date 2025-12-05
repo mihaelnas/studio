@@ -15,6 +15,7 @@ export type Employee = {
   historicalAttendanceData?: string;
   totalOvertimeMinutes?: number;
   totalLateMinutes?: number;
+  role?: 'admin' | 'employee';
 };
 
 export type ManualCorrection = {
@@ -77,3 +78,5 @@ export type ProcessedAttendance = {
     leave_type: string | null;
     taskDescription: string | null;
 }
+
+    

@@ -3,53 +3,91 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAppAdmin(userId) {
-      // Pour l'instant, personne n'est admin. Cela verrouille les actions réservées aux admins.
-      // Dans une future version, cela vérifierait un rôle ou une réclamation personnalisée.
-      return false;
+    // Helper functions to check user roles and ownership.
+    // An admin is a user whose employee document has the role 'admin'.
+    function isAppAdmin() {
+      return exists(/databases/$(database)/documents/employees/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == 'admin';
     }
     
+    // Checks if the requesting user is the owner of the document.
+    function isOwner(employeeId) {
+      return request.auth.uid == employeeId;
+    }
+    
+    // Checks if the user is an admin or the owner of the data.
+    function isAdminOrOwner(employeeId) {
+      return isAppAdmin() || isOwner(employeeId);
+    }
+    
+    // --- Collection: attendanceLogs ---
     match /attendanceLogs/{logId} {
-      // Tout utilisateur authentifié peut lire/écrire les logs bruts.
-      // Dans une application réelle, l'écriture devrait être limitée au backend via une clé API.
-      allow read, write: if request.auth != null;
+      // Only admins or a secure server process should write raw logs.
+      allow write: if isAppAdmin();
+      // Admins and the specific employee can read their own logs.
+      allow read: if isAppAdmin() || get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.employeeId == resource.data.personnelId;
     }
 
+    // --- Collection: employees ---
     match /employees/{employeeId} {
-      // Tout utilisateur authentifié peut lister/voir les employés.
-      allow list, get: if request.auth != null;
-      // Tout utilisateur authentifié peut créer/mettre à jour/supprimer.
-      // TODO: Restreindre l'écriture aux administrateurs RH.
-      allow write: if request.auth != null;
+      // An employee can read their own profile. Admins can read any profile.
+      allow get: if isAdminOrOwner(employeeId);
+      // Only admins can list all employees.
+      allow list: if isAppAdmin();
+      // Only admins can create, update, or delete employee profiles.
+      allow write: if isAppAdmin();
+    }
+    
+    // --- Subcollection: employee schedules ---
+    match /employees/{employeeId}/schedules/{scheduleId} {
+      // Admins or the employee themselves can read the schedule.
+        allow read: if isAdminOrOwner(employeeId);
+        // Only admins can write to schedules.
+        allow write: if isAppAdmin();
     }
 
+    // --- Collection: schedules (if used as top-level) ---
     match /schedules/{scheduleId} {
-      // Permet de lire/écrire des documents individuels
-      allow read, write: if request.auth != null;
+        // Admins can write.
+        allow write: if isAppAdmin();
+        // Admins and the relevant employee can read.
+        allow read: if isAppAdmin() || resource.data.employeeId == request.auth.uid;
     }
-    
     match /schedules {
-      // Permet de lister toute la collection, nécessaire pour le planning
-      allow list: if request.auth != null;
+      // Only admins can list all schedules.
+      allow list: if isAppAdmin();
     }
     
+    // --- Collection: manualCorrections ---
     match /manualCorrections/{correctionId} {
-        allow read, write: if request.auth != null;
+        // Only admins can read or write manual corrections.
+        allow read, write: if isAppAdmin();
     }
 
+    // --- Collection: processedAttendance ---
     match /processedAttendance/{recordId} {
-        allow list, get, write: if request.auth != null;
+        // Admins can list and read any record.
+        allow list, get: if isAppAdmin();
+        // An employee can read their own processed attendance (if recordId is their userId).
+        allow get: if recordId.startsWith(request.auth.uid);
+        // Writing should be restricted to the backend processing function, emulated here by admin-only.
+        allow write: if isAppAdmin();
     }
 
+    // --- Collection: payslips ---
     match /payslips/{payslipId} {
-        // Les utilisateurs ne devraient pouvoir lire que leurs propres fiches de paie.
-        allow read: if request.auth != null && resource.data.employeeId == request.auth.uid;
-        // L'écriture des fiches de paie devrait être un processus serveur/admin.
-        allow write: if request.auth != null;
+        // An employee can only read their own payslip.
+        allow read: if isAppAdmin() || get(/databases/$(database)/documents/employees/$(resource.data.employeeId)).data.authUid == request.auth.uid;
+        // Writing payslips should be an admin/server process.
+        allow write: if isAppAdmin();
     }
 
+    // --- Collection: shifts ---
     match /shifts/{shiftId} {
+      // All authenticated users can read shift information.
       allow read: if request.auth != null;
     }
   }
 }
+
+    

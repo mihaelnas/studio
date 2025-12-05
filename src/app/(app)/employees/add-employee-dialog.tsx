@@ -38,6 +38,7 @@ import { useFirebase } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { setDoc, doc, collection } from 'firebase/firestore';
 import { Loader } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const departments = [
   "Non assigné",
@@ -57,6 +58,7 @@ const formSchema = z.object({
   department: z.string({ required_error: "Veuillez sélectionner un département." }),
   hourlyRate: z.coerce.number().min(0, { message: "Le taux horaire doit être positif." }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères." }),
+  isAdmin: z.boolean().default(false).optional(),
 });
 
 export function AddEmployeeDialog() {
@@ -74,6 +76,7 @@ export function AddEmployeeDialog() {
       department: "Non assigné",
       hourlyRate: 25000,
       password: "",
+      isAdmin: false,
     },
   });
 
@@ -88,17 +91,18 @@ export function AddEmployeeDialog() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Use a new document reference with an auto-generated ID from Firestore
-      const newEmployeeDocRef = doc(collection(firestore, 'employees'));
+      // Use the user's UID as the document ID for the employee document for easy mapping.
+      const newEmployeeDocRef = doc(firestore, 'employees', user.uid);
       
       await setDoc(newEmployeeDocRef, {
-          id: newEmployeeDocRef.id, // Store the auto-generated ID in the document itself
+          id: user.uid, // Store the auth UID in the document as well
           authUid: user.uid,
           employeeId: values.employeeId, // The ID from the biometric device
           name: values.name,
           email: values.email,
           department: values.department,
           hourlyRate: values.hourlyRate,
+          role: values.isAdmin ? 'admin' : 'employee',
       });
 
       toast({
@@ -220,6 +224,28 @@ export function AddEmployeeDialog() {
                 </FormItem>
               )}
             />
+             <FormField
+                control={form.control}
+                name="isAdmin"
+                render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                        <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                        <FormLabel>
+                        Administrateur
+                        </FormLabel>
+                        <FormDescription>
+                        Cochez cette case pour donner les droits d'administrateur à cet utilisateur.
+                        </FormDescription>
+                    </div>
+                    </FormItem>
+                )}
+             />
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={isSubmitting}>
@@ -233,3 +259,5 @@ export function AddEmployeeDialog() {
     </Dialog>
   );
 }
+
+    

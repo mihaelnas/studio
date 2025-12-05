@@ -166,10 +166,11 @@ interface ActivateEmployeeAccountProps {
     password?: string;
     department: string;
     hourlyRate: number;
+    isAdmin?: boolean;
 }
 
 export async function activateEmployeeAccount(props: ActivateEmployeeAccountProps): Promise<{ success: boolean; message: string }> {
-    const { employeeId, email, password, department, hourlyRate } = props;
+    const { employeeId, email, password, department, hourlyRate, isAdmin } = props;
 
     if (!password) {
         return { success: false, message: "Le mot de passe est requis." };
@@ -183,12 +184,14 @@ export async function activateEmployeeAccount(props: ActivateEmployeeAccountProp
         const user = userCredential.user;
 
         // 2. Update the employee document in Firestore
+        // The employeeId passed in is the Firestore document ID.
         const employeeDocRef = doc(firestore, 'employees', employeeId);
         await updateDoc(employeeDocRef, {
             authUid: user.uid,
             email: email,
             department: department,
-            hourlyRate: hourlyRate
+            hourlyRate: hourlyRate,
+            role: isAdmin ? 'admin' : 'employee',
         });
 
         return { success: true, message: "Compte employé activé avec succès." };
@@ -204,3 +207,5 @@ export async function activateEmployeeAccount(props: ActivateEmployeeAccountProp
         return { success: false, message: message };
     }
 }
+
+    

@@ -41,6 +41,7 @@ import { activateEmployeeAccount } from "@/lib/actions";
 import { Loader } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface EmployeeEditDialogProps {
   employee: Employee;
@@ -63,6 +64,7 @@ const formSchema = z.object({
   department: z.string({ required_error: "Veuillez sélectionner un département." }),
   hourlyRate: z.coerce.number().min(0, { message: "Le taux horaire doit être positif." }).optional(),
   password: z.string().optional(),
+  isAdmin: z.boolean().default(false).optional(),
 });
 
 export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogProps) {
@@ -80,6 +82,7 @@ export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogPro
       department: employee.department || "Non assigné",
       hourlyRate: employee.hourlyRate || 0,
       password: "",
+      isAdmin: employee.role === 'admin',
     },
   });
 
@@ -101,6 +104,7 @@ export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogPro
                 password: values.password,
                 department: values.department,
                 hourlyRate: values.hourlyRate || 0,
+                isAdmin: values.isAdmin,
             });
 
             if (!result.success) {
@@ -118,6 +122,7 @@ export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogPro
                 email: values.email,
                 department: values.department,
                 hourlyRate: values.hourlyRate,
+                role: values.isAdmin ? 'admin' : 'employee',
             });
             toast({
                 title: "Employé mis à jour",
@@ -229,6 +234,28 @@ export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogPro
                 </FormItem>
               )}
             />
+             <FormField
+                control={form.control}
+                name="isAdmin"
+                render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                        <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                        <FormLabel>
+                        Administrateur
+                        </FormLabel>
+                        <FormDescription>
+                        Cochez cette case pour donner les droits d'administrateur à cet utilisateur.
+                        </FormDescription>
+                    </div>
+                    </FormItem>
+                )}
+             />
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={isSubmitting}>
@@ -242,3 +269,5 @@ export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogPro
     </Dialog>
   );
 }
+
+    
