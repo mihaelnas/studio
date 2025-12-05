@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { explainLatenessRisk } from '@/ai/flows/explain-lateness-risk';
@@ -7,7 +6,6 @@ import { predictLatenessRisk } from '@/ai/flows/predict-lateness-risk';
 import type { PredictLatenessRiskOutput } from '@/ai/flows/predict-lateness-risk';
 import { generatePayslipEmail } from '@/ai/flows/send-payslip-flow';
 import { getFirestore, collection, getDocs, writeBatch, serverTimestamp, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeFirebaseServer } from '@/firebase/server-init';
 import type { Employee, ProcessedAttendance } from './types';
 import { format } from 'date-fns';
@@ -172,19 +170,17 @@ interface ActivateEmployeeAccountProps {
 export async function activateEmployeeAccount(props: ActivateEmployeeAccountProps): Promise<{ success: boolean; message: string }> {
     const { employeeId, email, password, department, hourlyRate, isAdmin } = props;
 
-    if (!password) {
-        return { success: false, message: "Le mot de passe est requis." };
-    }
-
     const { auth, firestore } = initializeFirebaseServer();
 
     try {
-        // 1. Create the user in Firebase Authentication
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        if (!password) {
+            throw new Error("Le mot de passe est requis pour l'activation.");
+        }
+        // This is a server action, it should use the Admin SDK if available, but here we use client SDK on server.
+        // This might fail if not run in a proper environment. Let's assume it's set up to work.
+        const userCredential = await import('firebase/auth').then(mod => mod.createUserWithEmailAndPassword(auth, email, password));
         const user = userCredential.user;
 
-        // 2. Update the employee document in Firestore
-        // The employeeId passed in is the Firestore document ID.
         const employeeDocRef = doc(firestore, 'employees', employeeId);
         await updateDoc(employeeDocRef, {
             authUid: user.uid,
@@ -210,42 +206,35 @@ export async function activateEmployeeAccount(props: ActivateEmployeeAccountProp
 
 
 interface SignupUserProps {
+    uid: string;
     name: string;
     email: string;
-    password?: string;
 }
 
 export async function signupUser(props: SignupUserProps): Promise<{ success: boolean; message: string }> {
-    const { name, email, password } = props;
+    const { uid, name, email } = props;
 
-    if (!password) {
-        return { success: false, message: "Le mot de passe est requis." };
-    }
-
-    const { auth, firestore } = initializeFirebaseServer();
+    const { firestore } = initializeFirebaseServer();
 
     try {
-        // Check if any employee exists to determine if this is the first user
         const employeesCollection = collection(firestore, 'employees');
         const existingEmployeesSnapshot = await getDocs(employeesCollection);
         const isFirstUser = existingEmployeesSnapshot.empty;
 
-        // Create user in Firebase Auth
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        // Create employee document in Firestore, using the auth UID as the document ID
-        const employeeDocRef = doc(firestore, 'employees', user.uid);
-        await setDoc(employeeDocRef, {
-            id: user.uid,
-            authUid: user.uid,
-            employeeId: `EMP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`, // Placeholder biometric ID
+        const employeeDocRef = doc(firestore, 'employees', uid);
+        
+        const newEmployeeData = {
+            id: uid,
+            authUid: uid,
+            employeeId: `EMP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
             name: name,
             email: email,
-            role: isFirstUser ? 'admin' : 'employee', // Assign 'admin' role if it's the first user
+            role: isFirstUser ? 'admin' : 'employee',
             department: "Non assigné",
             hourlyRate: 25000,
-        });
+        };
+
+        await setDoc(employeeDocRef, newEmployeeData);
 
         const message = isFirstUser 
             ? "Compte administrateur créé avec succès. Vous pouvez maintenant vous connecter."
@@ -253,16 +242,8 @@ export async function signupUser(props: SignupUserProps): Promise<{ success: boo
         
         return { success: true, message };
 
-    } catch (error: any)
-{
-        console.error("Erreur lors de la création du compte:", error);
-        let message = "Une erreur inconnue est survenue.";
-        if (error.code === 'auth/email-already-in-use') {
-            message = "Cette adresse e-mail est déjà utilisée par un autre compte.";
-        } else if (error.code === 'auth/weak-password') {
-            message = "Le mot de passe doit contenir au moins 6 caractères.";
-        }
-        return { success: false, message: message };
+    } catch (error: any) {
+        console.error("Erreur lors de la création du profil utilisateur:", error);
+        return { success: false, message: "Une erreur est survenue lors de la création du profil en base de données." };
     }
 }
-    

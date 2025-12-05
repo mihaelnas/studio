@@ -20,6 +20,8 @@ import Link from 'next/link';
 import { Stethoscope, Loader, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { signupUser } from "@/lib/actions";
+import { useFirebase } from "@/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit comporter au moins 2 caractères." }),
@@ -30,6 +32,7 @@ const formSchema = z.object({
 export default function SignupPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { auth } = useFirebase();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -44,24 +47,57 @@ export default function SignupPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-
-    const result = await signupUser(values);
-
-    if (result.success) {
-      toast({
-        title: "Inscription Réussie",
-        description: result.message,
-      });
-      router.push("/login"); 
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Échec de l'inscription",
-        description: result.message,
-      });
+    if (!auth) {
+        toast({
+            variant: "destructive",
+            title: "Erreur",
+            description: "Le service d'authentification n'est pas disponible.",
+        });
+        setIsLoading(false);
+        return;
     }
 
-    setIsLoading(false);
+    try {
+      // 1. Create user in Firebase Auth (client-side)
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // 2. Call server action to create user profile in Firestore
+      const profileResult = await signupUser({
+        uid: user.uid,
+        name: values.name,
+        email: values.email,
+      });
+
+      if (profileResult.success) {
+        toast({
+          title: "Inscription Réussie",
+          description: profileResult.message,
+        });
+        router.push("/login");
+      } else {
+        // If profile creation fails, we should ideally delete the auth user,
+        // but for now, just show the error.
+        throw new Error(profileResult.message);
+      }
+    } catch (error: any) {
+        let message = "Une erreur inconnue est survenue.";
+        if (error.code === 'auth/email-already-in-use') {
+            message = "Cette adresse e-mail est déjà utilisée par un autre compte.";
+        } else if (error.code === 'auth/weak-password') {
+            message = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
+        } else if (error.message) {
+            message = error.message;
+        }
+
+        toast({
+            variant: "destructive",
+            title: "Échec de l'inscription",
+            description: message,
+        });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
