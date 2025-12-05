@@ -5,15 +5,9 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarSeparator } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, CalendarDays, Upload, History, Cog, BarChart, BrainCircuit, Wrench, FileSpreadsheet, UserSquare } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, Upload, History, Cog, BarChart, BrainCircuit, Wrench, FileSpreadsheet } from "lucide-react";
 
 const adminNavGroups = [
-  {
-    title: "Mon Espace",
-    items: [
-      { href: "/my-dashboard", label: "Mon Tableau de Bord", icon: UserSquare },
-    ]
-  },
   {
     title: "Gestion RH",
     items: [
