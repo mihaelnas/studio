@@ -11,7 +11,7 @@ import {
 import type { Schedule, Employee } from '@/lib/types';
 import { useFirebase, useMemoFirebase } from "@/firebase";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { collection, query, where, FirestoreError, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, FirestoreError, getDocs } from 'firebase/firestore';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -36,6 +36,10 @@ export function ShiftDistributionChart() {
       useMemoFirebase(() => user ? query(collection(firestore, 'employees'), where('authUid', '==', user.uid)) : null, [firestore, user])
   );
   const isAdmin = currentUserData?.[0]?.role === 'admin';
+  
+  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(
+    useMemoFirebase(() => isAdmin && firestore ? collection(firestore, 'employees') : null, [isAdmin, firestore])
+  );
 
   useEffect(() => {
     const today = new Date();
@@ -46,25 +50,40 @@ export function ShiftDistributionChart() {
 
 
   useEffect(() => {
+    if (!firestore || !dateRange || userLoading || employeesLoading || !isAdmin) {
+        if (!userLoading && !isAdmin) {
+            setIsLoading(false);
+        }
+        return;
+    };
+    if (!employees) {
+        setIsLoading(false);
+        return;
+    };
+
     const fetchSchedules = async () => {
-        if (!firestore || !dateRange || userLoading) return;
-        
         setIsLoading(true);
         setError(null);
-
         try {
-            if (isAdmin) {
-                const schedulesQuery = query(
-                    collectionGroup(firestore, 'schedules'),
+            const schedulePromises = employees.map(employee => {
+                const scheduleCollectionRef = collection(firestore, `employees/${employee.id}/schedules`);
+                const q = query(
+                    scheduleCollectionRef,
                     where('date', '>=', dateRange.start),
                     where('date', '<=', dateRange.end)
                 );
-                const schedulesSnapshot = await getDocs(schedulesQuery);
-                const schedulesData = schedulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Schedule));
-                setSchedules(schedulesData);
-            } else {
-                 setSchedules([]); // Non-admins don't see this chart
-            }
+                return getDocs(q);
+            });
+
+            const snapshots = await Promise.all(schedulePromises);
+            const allSchedules: Schedule[] = [];
+            snapshots.forEach(snapshot => {
+                snapshot.forEach(doc => {
+                    allSchedules.push({ id: doc.id, ...doc.data() } as Schedule);
+                });
+            });
+            setSchedules(allSchedules);
+
         } catch (e: any) {
             setError(e);
         } finally {
@@ -73,15 +92,17 @@ export function ShiftDistributionChart() {
     }
     fetchSchedules();
 
-  }, [firestore, dateRange, isAdmin, userLoading]);
+  }, [firestore, dateRange, userLoading, employeesLoading, isAdmin, employees]);
 
+  const finalLoading = isLoading || userLoading || employeesLoading;
+  const finalError = error || employeesError;
   const total = schedules.length;
   
-  if (isLoading || userLoading) {
+  if (finalLoading) {
     return <Skeleton className="h-[250px] w-[250px] rounded-full mx-auto" />;
   }
 
-  if (error) {
+  if (finalError) {
      return (
         <Alert variant="destructive" className="h-full w-full flex items-center justify-center">
              <div className="text-center">
@@ -125,7 +146,7 @@ export function ShiftDistributionChart() {
           nameKey="tasks"
           innerRadius={60}
           strokeWidth={5}
-          fill="var(--chart-1)"
+          fill="var(--color-chart-1)"
         >
           <Label
             content={({ viewBox }) => {
