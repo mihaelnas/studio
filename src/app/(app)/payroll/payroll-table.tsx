@@ -44,13 +44,15 @@ interface PayrollData {
 export function PayrollTable() {
     const { firestore } = useFirebase();
     const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
+    const [payPeriod, setPayPeriod] = useState<{ month: number; year: number } | null>(null);
 
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const payPeriod = useMemo(() => ({
-        month: currentMonth + 1,
-        year: currentYear
-    }), [currentMonth, currentYear]);
+    useEffect(() => {
+        const today = new Date();
+        setPayPeriod({
+            month: today.getMonth() + 1,
+            year: today.getFullYear(),
+        });
+    }, []);
 
     const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
     const attendanceQuery = useMemoFirebase(() => firestore ? collection(firestore, 'processedAttendance') : null, [firestore]);
@@ -59,8 +61,11 @@ export function PayrollTable() {
     const { data: attendance, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
 
     useEffect(() => {
-        if (!employees || !attendance) return;
+        if (!employees || !attendance || !payPeriod) return;
 
+        const currentMonth = payPeriod.month - 1;
+        const currentYear = payPeriod.year;
+        
         const payrollMap = new Map<string, { totalHours: number; overtimeHours: number }>();
 
         attendance.forEach(record => {
@@ -92,9 +97,9 @@ export function PayrollTable() {
         }).sort((a,b) => b.grossSalary - a.grossSalary);
 
         setPayrollData(calculatedPayroll);
-    }, [employees, attendance, currentMonth, currentYear]);
+    }, [employees, attendance, payPeriod]);
 
-    const isLoading = employeesLoading || attendanceLoading;
+    const isLoading = employeesLoading || attendanceLoading || !payPeriod;
     const error = employeesError || attendanceError;
 
   return (
@@ -137,7 +142,7 @@ export function PayrollTable() {
                 <TableCell className="font-semibold">{formatCurrency(payroll.grossSalary)}</TableCell>
                 <TableCell className="text-right">
                     <Button variant="outline" size="sm" asChild>
-                        <Link href={`/payslips/${payroll.employeeId}/${payPeriod.year}/${payPeriod.month}`}>
+                        <Link href={`/payslips/${payroll.employeeId}/${payPeriod!.year}/${payPeriod!.month}`}>
                             <Eye className="mr-2 h-4 w-4" />
                             Aperçu
                         </Link>

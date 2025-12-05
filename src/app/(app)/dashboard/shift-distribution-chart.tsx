@@ -28,24 +28,29 @@ const chartConfig = {
 
 export function ShiftDistributionChart() {
   const { firestore } = useFirebase();
+  const [dateRange, setDateRange] = useState<{ start: string, end: string } | null>(null);
 
-  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-  const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-  
+  useEffect(() => {
+    const today = new Date();
+    const weekStart = format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const weekEnd = format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    setDateRange({ start: weekStart, end: weekEnd });
+  }, []);
+
   const schedulesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !dateRange) return null;
     return query(
         collection(firestore, 'schedules'),
-        where('date', '>=', weekStart),
-        where('date', '<=', weekEnd)
+        where('date', '>=', dateRange.start),
+        where('date', '<=', dateRange.end)
     );
-  }, [firestore, weekStart, weekEnd]);
+  }, [firestore, dateRange]);
 
   const { data, isLoading, error } = useCollection<Schedule>(schedulesQuery);
   
   const total = data?.length || 0;
   
-  if (isLoading) {
+  if (isLoading || !dateRange) {
     return <Skeleton className="h-[250px] w-[250px] rounded-full mx-auto" />;
   }
 
