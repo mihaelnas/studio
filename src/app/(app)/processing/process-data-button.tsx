@@ -70,7 +70,7 @@ export function ProcessDataButton() {
                 const newEmployeeData: Omit<Employee, 'id'> = {
                     authUid: null,
                     employeeId: trimmedPersonnelId,
-                    name: `Employé (ID: ${trimmedPersonnelId})`,
+                    name: `${log.firstName} ${log.lastName}`.trim() || `Employé (ID: ${trimmedPersonnelId})`,
                     email: `placeholder+${trimmedPersonnelId}@miaraka.com`,
                     department: "Non assigné",
                     hourlyRate: 25000, // Default rate
@@ -98,7 +98,7 @@ export function ProcessDataButton() {
         
         const batch = writeBatch(firestore);
 
-        // Create new employees first
+        // Create new employees first and get their new IDs
         for (const [personnelId, employeeData] of newEmployeesToCreate.entries()) {
             const newDocRef = doc(collection(firestore, "employees"));
             const newEmployeeWithId = { ...employeeData, id: newDocRef.id };
@@ -248,6 +248,3 @@ export function ProcessDataButton() {
     </Button>
   );
 }
-
-    
-
