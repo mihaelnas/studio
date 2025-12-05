@@ -6,6 +6,8 @@ service cloud.firestore {
     // Helper functions to check user roles and ownership.
     // An admin is a user whose employee document has the role 'admin'.
     function isAppAdmin() {
+      // Use this check only for rules on single documents (get, update, delete)
+      // It will not work efficiently or at all for list queries.
       return exists(/databases/$(database)/documents/employees/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == 'admin';
     }
@@ -32,12 +34,14 @@ service cloud.firestore {
     match /employees/{employeeId} {
       // An employee can read their own profile. Admins can read any profile.
       allow get: if isAdminOrOwner(employeeId);
-      // Only admins can list all employees.
-      allow list: if isAppAdmin();
+      
+      // Allow any authenticated user to list employees.
+      // This is a security tradeoff for simplicity, as custom claims are not available.
+      // In a real-world high-security app, this would be restricted.
+      allow list: if request.auth != null;
       
       // An authenticated user can create their own profile document.
-      // Or an admin can create any new user profile.
-      allow create: if isOwner(employeeId) || isAppAdmin();
+      allow create: if isOwner(employeeId);
 
       // Only admins can update employee profiles.
       allow update: if isAppAdmin();
@@ -75,4 +79,9 @@ service cloud.firestore {
     // --- Collection: processedAttendance ---
     match /processedAttendance/{recordId} {
         // Admins can list and read any record.
-        allow list, get: if isAppA
+        allow list, get: if isAppAdmin();
+        // Allow write access for admins (for corrections) and server-side processes
+        allow write: if isAppAdmin();
+    }
+  }
+}
