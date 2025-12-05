@@ -37,6 +37,10 @@ import { useFirebase } from "@/firebase";
 import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { doc } from 'firebase/firestore';
 import type { Employee } from "@/lib/types";
+import { activateEmployeeAccount } from "@/lib/actions";
+import { Loader } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 interface EmployeeEditDialogProps {
   employee: Employee;
@@ -58,46 +62,106 @@ const formSchema = z.object({
   email: z.string().email({ message: "Veuillez saisir une adresse e-mail valide." }),
   department: z.string({ required_error: "Veuillez sélectionner un département." }),
   hourlyRate: z.coerce.number().min(0, { message: "Le taux horaire doit être positif." }).optional(),
+  password: z.string().optional(),
 });
 
 export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { firestore } = useFirebase();
+
+  const isActivation = !employee.authUid;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: employee.email,
-      department: employee.department,
+      department: employee.department || "Non assigné",
       hourlyRate: employee.hourlyRate || 0,
+      password: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!firestore) return;
+    setIsSubmitting(true);
 
-    const employeeDocRef = doc(firestore, 'employees', employee.id);
-    
-    updateDocumentNonBlocking(employeeDocRef, values);
+    try {
+        if (isActivation) {
+            if (!values.password || values.password.length < 6) {
+                form.setError("password", { message: "Le mot de passe doit contenir au moins 6 caractères."});
+                setIsSubmitting(false);
+                return;
+            }
+            // Activate account
+            const result = await activateEmployeeAccount({
+                employeeId: employee.id,
+                email: values.email,
+                password: values.password,
+                department: values.department,
+                hourlyRate: values.hourlyRate || 0,
+            });
 
-    toast({
-      title: "Employé mis à jour",
-      description: `Les informations de ${employee.name} ont été modifiées avec succès.`,
-    });
-    setIsOpen(false);
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+
+            toast({
+                title: "Compte Activé",
+                description: `Le compte pour ${employee.name} a été créé avec succès.`,
+            });
+        } else {
+            // Just update info
+            const employeeDocRef = doc(firestore, 'employees', employee.id);
+            updateDocumentNonBlocking(employeeDocRef, {
+                email: values.email,
+                department: values.department,
+                hourlyRate: values.hourlyRate,
+            });
+            toast({
+                title: "Employé mis à jour",
+                description: `Les informations de ${employee.name} ont été modifiées avec succès.`,
+            });
+        }
+        setIsOpen(false);
+
+    } catch(error: any) {
+        toast({
+            variant: "destructive",
+            title: isActivation ? "Échec de l'activation" : "Échec de la mise à jour",
+            description: error.message || "Une erreur inconnue est survenue."
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Modifier l'Employé</DialogTitle>
+          <DialogTitle>{isActivation ? "Activer le Compte Employé" : "Modifier l'Employé"}</DialogTitle>
           <DialogDescription>
-            Modifier les informations pour {employee.name}. Cliquez sur Enregistrer pour sauvegarder.
+            {isActivation 
+                ? `Créez un compte de connexion pour ${employee.name}.`
+                : `Modifier les informations pour ${employee.name}.`
+            }
           </DialogDescription>
         </DialogHeader>
+
+        {isActivation && (
+            <Alert variant="accent">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Action requise</AlertTitle>
+                <AlertDescription>
+                    Ce profil a été créé automatiquement. Veuillez définir un email et un mot de passe pour activer le compte de cet employé.
+                </AlertDescription>
+            </Alert>
+        )}
+
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
             <FormField
@@ -113,6 +177,23 @@ export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogPro
                 </FormItem>
               )}
             />
+
+            {isActivation && (
+                 <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Mot de passe initial</FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="********" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            )}
+
             <FormField
               control={form.control}
               name="department"
@@ -150,7 +231,10 @@ export function EmployeeEditDialog({ employee, children }: EmployeeEditDialogPro
             />
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
-              <Button type="submit">Enregistrer</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                 {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                 {isActivation ? "Activer et Enregistrer" : "Enregistrer"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

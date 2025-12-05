@@ -5,8 +5,9 @@ import { explainLatenessRisk } from '@/ai/flows/explain-lateness-risk';
 import { predictLatenessRisk } from '@/ai/flows/predict-lateness-risk';
 import type { PredictLatenessRiskOutput } from '@/ai/flows/predict-lateness-risk';
 import { generatePayslipEmail } from '@/ai/flows/send-payslip-flow';
-import { getFirestore, collection, getDocs, writeBatch, serverTimestamp, doc } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase/index';
+import { getFirestore, collection, getDocs, writeBatch, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { initializeFirebaseServer } from '@/firebase/server-init';
 import type { Employee, ProcessedAttendance } from './types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -84,7 +85,7 @@ export async function sendPayslipsByEmail(): Promise<{
   
   try {
     // Initialize Firestore Admin
-    const { firestore } = initializeFirebase();
+    const { firestore } = initializeFirebaseServer();
 
     // 1. Fetch all employees and attendance data
     const employeesSnapshot = await getDocs(collection(firestore, 'employees'));
@@ -156,4 +157,49 @@ export async function sendPayslipsByEmail(): Promise<{
     console.error('Failed to send payslips:', error);
     return { success: false, message: 'Une erreur est survenue lors de la génération ou de l\'envoi des fiches de paie.' };
   }
+}
+
+interface ActivateEmployeeAccountProps {
+    employeeId: string;
+    email: string;
+    password?: string;
+    department: string;
+    hourlyRate: number;
+}
+
+export async function activateEmployeeAccount(props: ActivateEmployeeAccountProps): Promise<{ success: boolean; message: string }> {
+    const { employeeId, email, password, department, hourlyRate } = props;
+
+    if (!password) {
+        return { success: false, message: "Le mot de passe est requis." };
+    }
+
+    const { auth, firestore } = initializeFirebaseServer();
+
+    try {
+        // 1. Create the user in Firebase Authentication
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // 2. Update the employee document in Firestore
+        const employeeDocRef = doc(firestore, 'employees', employeeId);
+        await updateDoc(employeeDocRef, {
+            authUid: user.uid,
+            email: email,
+            department: department,
+            hourlyRate: hourlyRate
+        });
+
+        return { success: true, message: "Compte employé activé avec succès." };
+
+    } catch (error: any) {
+        console.error("Erreur lors de l'activation du compte employé:", error);
+        let message = "Une erreur inconnue est survenue.";
+        if (error.code === 'auth/email-already-in-use') {
+            message = "Cette adresse e-mail est déjà utilisée par un autre compte.";
+        } else if (error.code === 'auth/weak-password') {
+            message = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
+        }
+        return { success: false, message: message };
+    }
 }
