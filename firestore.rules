@@ -40,7 +40,7 @@ service cloud.firestore {
       allow create: if (isOwner(employeeId) || isAppAdmin());
 
       // Only admins can update or delete employee profiles. Admins can also create new users.
-      allow write: if isAppAdmin();
+      allow update, delete: if isAppAdmin();
     }
     
     // --- Subcollection: employee schedules ---
