@@ -58,11 +58,10 @@ export default function SignupPage() {
     }
 
     try {
-      // 1. Create user in Firebase Auth (client-side)
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 2. Call server action to create user profile in Firestore
+      // Call server action to create user profile in Firestore, without a try-catch to see the raw error.
       const profileResult = await signupUser({
         uid: user.uid,
         name: values.name,
@@ -76,17 +75,19 @@ export default function SignupPage() {
         });
         router.push("/login");
       } else {
-        // If profile creation fails, we should ideally delete the auth user,
-        // but for now, just show the error.
+        // This will now likely not be hit, as an error will be thrown before.
         throw new Error(profileResult.message);
       }
     } catch (error: any) {
+        // This will now catch both auth errors and profile creation errors.
+        // We'll let profile creation errors bubble up for debugging.
         let message = "Une erreur inconnue est survenue.";
         if (error.code === 'auth/email-already-in-use') {
             message = "Cette adresse e-mail est déjà utilisée par un autre compte.";
         } else if (error.code === 'auth/weak-password') {
             message = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
         } else if (error.message) {
+            // For other errors, show the raw message
             message = error.message;
         }
 
