@@ -49,18 +49,27 @@ export function SchedulePlanner() {
 
   useEffect(() => {
     const fetchSchedules = async () => {
-        if (!firestore) return;
+        if (!firestore || !employees) return;
         setSchedulesLoading(true);
         try {
             const weekEnd = addDays(weekStart, 6);
-            const q = query(
-                collectionGroup(firestore, 'schedules'),
-                where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
-                where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
-            );
-            const snapshot = await getDocs(q);
-            const schedulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Schedule));
-            setSchedules(schedulesData);
+            const allSchedules: Schedule[] = [];
+            
+            // Iterate over employees to fetch schedules for each one
+            for (const employee of employees) {
+                const scheduleCollectionRef = collection(firestore, `employees/${employee.id}/schedules`);
+                const q = query(
+                    scheduleCollectionRef,
+                    where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
+                    where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
+                );
+                const snapshot = await getDocs(q);
+                snapshot.forEach(doc => {
+                    allSchedules.push({ id: doc.id, ...doc.data() } as Schedule);
+                });
+            }
+
+            setSchedules(allSchedules);
             setSchedulesError(null);
         } catch (e: any) {
             setSchedulesError(e);
@@ -69,7 +78,7 @@ export function SchedulePlanner() {
         }
     }
     fetchSchedules();
-  }, [firestore, weekStart]);
+  }, [firestore, weekStart, employees]);
 
 
   const isLoading = employeesLoading || schedulesLoading;
