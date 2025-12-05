@@ -75,7 +75,6 @@ export function AppHeader() {
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" size="icon" className="rounded-full">
               <Avatar>
-                <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || "Admin"} />
                 <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
               </Avatar>
               <span className="sr-only">Ouvrir le menu utilisateur</span>
