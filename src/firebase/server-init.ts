@@ -5,9 +5,10 @@ import { getFirestore } from 'firebase/firestore';
 import { firebaseConfig } from './config';
 
 // This function is specifically for server-side initialization.
-// It does NOT have the 'use client' directive.
+// It ensures that Firebase is initialized only once.
 export function initializeFirebaseServer() {
-  if (getApps().length) {
+  const apps = getApps();
+  if (apps.length) {
     return getSdks(getApp());
   }
 
@@ -16,9 +17,11 @@ export function initializeFirebaseServer() {
 }
 
 function getSdks(firebaseApp: FirebaseApp) {
+  const auth = getAuth(firebaseApp);
+  const firestore = getFirestore(firebaseApp);
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    auth,
+    firestore
   };
 }

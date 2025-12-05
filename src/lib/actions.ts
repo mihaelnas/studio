@@ -253,7 +253,8 @@ export async function signupUser(props: SignupUserProps): Promise<{ success: boo
         
         return { success: true, message };
 
-    } catch (error: any) {
+    } catch (error: any)
+{
         console.error("Erreur lors de la création du compte:", error);
         let message = "Une erreur inconnue est survenue.";
         if (error.code === 'auth/email-already-in-use') {
