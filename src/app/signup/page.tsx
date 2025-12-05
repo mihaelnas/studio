@@ -18,9 +18,9 @@ import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { Stethoscope, Loader, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { signupUser } from "@/lib/actions";
 import { useFirebase } from "@/firebase";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc, setDoc, getDocs, collection } from "firebase/firestore";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit comporter au moins 2 caractères." }),
@@ -31,7 +31,7 @@ const formSchema = z.object({
 export default function SignupPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -46,11 +46,11 @@ export default function SignupPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    if (!auth) {
+    if (!auth || !firestore) {
         toast({
             variant: "destructive",
             title: "Erreur",
-            description: "Le service d'authentification n'est pas disponible.",
+            description: "Les services Firebase ne sont pas prêts.",
         });
         setIsLoading(false);
         return;
@@ -58,39 +58,54 @@ export default function SignupPage() {
 
     try {
       let userId: string;
+      let isExistingUser = false;
 
       try {
-        // 1. Try to create user in Firebase Auth
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
         userId = userCredential.user.uid;
       } catch (error: any) {
-        // If it fails because the email is already in use, sign in to get the UID
         if (error.code === 'auth/email-already-in-use') {
-          toast({ title: "Compte Existant", description: "Tentative de liaison du profil en base de données..."});
+          isExistingUser = true;
           const signInCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
           userId = signInCredential.user.uid;
         } else {
-          // Re-throw other auth errors (e.g., weak password)
           throw error;
         }
       }
 
-      // 2. Call server action to create the Firestore profile document
-      const profileResult = await signupUser({
-        uid: userId,
+      // At this point, user is authenticated. Now create Firestore profile.
+      const employeeDocRef = doc(firestore, 'employees', userId);
+      const employeeDoc = await getDoc(employeeDocRef);
+
+      if (employeeDoc.exists()) {
+        toast({ title: "Profil Existant", description: "Vous avez déjà un profil. Redirection vers la connexion."});
+        router.push('/login');
+        return;
+      }
+
+      const employeesCollectionRef = collection(firestore, 'employees');
+      const existingEmployeesSnapshot = await getDocs(employeesCollectionRef);
+      const isFirstUser = existingEmployeesSnapshot.empty;
+
+      const newEmployeeData = {
+        id: userId,
+        authUid: userId,
+        employeeId: `EMP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
         name: values.name,
         email: values.email,
-      });
+        role: isFirstUser ? 'admin' : 'employee',
+        department: "Non assigné",
+        hourlyRate: 25000,
+      };
 
-      if (profileResult.success) {
-        toast({
-          title: "Opération Réussie",
-          description: profileResult.message,
-        });
-        router.push("/login");
-      } else {
-        throw new Error(profileResult.message);
-      }
+      await setDoc(employeeDocRef, newEmployeeData);
+      
+      const message = isFirstUser 
+          ? "Compte administrateur créé avec succès ! Vous pouvez maintenant vous connecter."
+          : "Compte créé avec succès ! Vous pouvez maintenant vous connecter.";
+      
+      toast({ title: "Opération Réussie", description: message });
+      router.push("/login");
 
     } catch (error: any) {
         let message = "Une erreur inconnue est survenue.";
@@ -100,7 +115,7 @@ export default function SignupPage() {
             message = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
         } else {
            console.error("Signup Error:", error);
-           message = error.message; 
+           message = "Erreur lors de la création du profil : " + error.message; 
         }
 
         toast({
