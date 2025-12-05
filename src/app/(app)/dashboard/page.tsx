@@ -1,8 +1,8 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HoursByDepartmentChart } from "./hours-by-department-chart";
 import { LatenessOverTimeChart } from "./lateness-over-time-chart";
 import { ShiftDistributionChart } from "./shift-distribution-chart";
-import { LatenessRiskTable } from "./lateness-risk-table";
 import { WeatherCard } from "./weather-card";
 
 export default function DashboardPage() {
@@ -37,17 +37,6 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Analyse des Risques de Retard</CardTitle>
-          <CardDescription>
-            Identifier les employés à risque et comprendre les raisons grâce à l'analyse par IA.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LatenessRiskTable />
-        </CardContent>
-      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Tendance des Retards</CardTitle>

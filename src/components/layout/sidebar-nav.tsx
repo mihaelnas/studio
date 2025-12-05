@@ -4,10 +4,11 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { LayoutDashboard, Wrench, Upload, FileSpreadsheet, CalendarDays, History, BarChart, Cog, Users, UserSquare } from "lucide-react";
+import { LayoutDashboard, Wrench, Upload, FileSpreadsheet, CalendarDays, History, BarChart, Cog, Users, BrainCircuit } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Tableau de Bord RH", icon: LayoutDashboard },
+  { href: "/ia", label: "Analyse IA", icon: BrainCircuit },
   { href: "/employees", label: "Employés", icon: Users },
   { href: "/planning", label: "Planning Tâches", icon: CalendarDays },
   { href: "/corrections", label: "Corrections", icon: Wrench },
