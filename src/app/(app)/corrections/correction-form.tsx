@@ -58,6 +58,11 @@ const formSchema = z.object({
 export function CorrectionForm() {
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
   const { data: employees, isLoading: employeesLoading } = useCollection<Employee>(employeesQuery);
@@ -237,7 +242,7 @@ export function CorrectionForm() {
                         selected={field.value}
                         onSelect={field.onChange}
                         disabled={(date) =>
-                        date > new Date() || date < new Date("2023-01-01")
+                          date > new Date() || date < new Date("2023-01-01")
                         }
                         initialFocus
                     />
