@@ -18,9 +18,10 @@ import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { Stethoscope, Loader, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { useFirebase } from "@/firebase";
+import { useFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, setDoc, getDocs, collection } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit comporter au moins 2 caractères." }),
@@ -57,36 +58,42 @@ export default function SignupPage() {
     }
 
     try {
-      let userId: string;
-      let isExistingUser = false;
-
+      let user;
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-        userId = userCredential.user.uid;
+        user = userCredential.user;
       } catch (error: any) {
         if (error.code === 'auth/email-already-in-use') {
-          isExistingUser = true;
+          // If email exists, try to sign in to link the profile
           const signInCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-          userId = signInCredential.user.uid;
+          user = signInCredential.user;
         } else {
-          throw error;
+          throw error; // Re-throw other auth errors
         }
       }
-
-      // At this point, user is authenticated. Now create Firestore profile.
+      
+      const userId = user.uid;
       const employeeDocRef = doc(firestore, 'employees', userId);
-      const employeeDoc = await getDoc(employeeDocRef);
-
-      if (employeeDoc.exists()) {
-        toast({ title: "Profil Existant", description: "Vous avez déjà un profil. Redirection vers la connexion."});
-        router.push('/login');
+      
+      const docSnap = await getDoc(employeeDocRef);
+      if (docSnap.exists()) {
+        toast({ title: "Profil Existant", description: "Vous avez déjà un profil. Redirection..." });
+        router.push("/dashboard");
         return;
       }
-
+      
       const employeesCollectionRef = collection(firestore, 'employees');
-      const existingEmployeesSnapshot = await getDocs(employeesCollectionRef);
-      const isFirstUser = existingEmployeesSnapshot.empty;
+      
+      const existingEmployeesSnapshot = await getDocs(employeesCollectionRef).catch(error => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: 'employees',
+              operation: 'list'
+          }));
+          throw error; // Re-throw to be caught by outer catch block
+      });
 
+      const isFirstUser = existingEmployeesSnapshot.empty;
+      
       const newEmployeeData = {
         id: userId,
         authUid: userId,
@@ -98,30 +105,41 @@ export default function SignupPage() {
         hourlyRate: 25000,
       };
 
-      await setDoc(employeeDocRef, newEmployeeData);
-      
-      const message = isFirstUser 
-          ? "Compte administrateur créé avec succès ! Vous pouvez maintenant vous connecter."
-          : "Compte créé avec succès ! Vous pouvez maintenant vous connecter.";
-      
-      toast({ title: "Opération Réussie", description: message });
-      router.push("/login");
+      // Use the non-blocking function which has built-in contextual error handling
+      setDocumentNonBlocking(employeeDocRef, newEmployeeData, { merge: false });
+
+      toast({
+        title: isFirstUser ? "Compte Administrateur Créé" : "Compte Créé",
+        description: "Connexion et redirection en cours...",
+      });
+
+      router.push("/dashboard");
 
     } catch (error: any) {
-        let message = "Une erreur inconnue est survenue.";
-        if (error.code === 'auth/wrong-password') {
-            message = "Le mot de passe est incorrect pour l'email existant.";
-        } else if (error.code === 'auth/weak-password') {
-            message = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
-        } else {
-           console.error("Signup Error:", error);
-           message = "Erreur lors de la création du profil : " + error.message; 
+        let description = "Une erreur inconnue est survenue.";
+        if (error.code) { // Firebase Auth errors have a 'code' property
+            switch(error.code) {
+                case 'auth/wrong-password':
+                    description = "Le mot de passe est incorrect pour cet email.";
+                    break;
+                case 'auth/weak-password':
+                    description = "Le mot de passe doit contenir au moins 6 caractères.";
+                    break;
+                case 'auth/invalid-credential':
+                     description = "Les informations de connexion sont invalides.";
+                     break;
+                default:
+                    description = `Erreur d'authentification: ${error.message}`;
+            }
+        } else if (error instanceof FirestorePermissionError) {
+             // This branch is now less likely to be hit directly, as errors are thrown
+             description = "Une erreur de permission est survenue en créant votre profil.";
         }
-
+        
         toast({
             variant: "destructive",
             title: "Échec de l'Opération",
-            description: message,
+            description: description,
         });
     } finally {
         setIsLoading(false);
