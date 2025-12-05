@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader, Cog } from "lucide-react";
 import { useFirebase } from "@/firebase";
-import { collection, getDocs, writeBatch, doc, query, where } from "firebase/firestore";
+import { collection, getDocs, writeBatch, doc, query, where, serverTimestamp, addDoc } from "firebase/firestore";
 import type { AttendanceLog, ProcessedAttendance, Employee, Schedule } from "@/lib/types";
 import { format, parse, isValid } from 'date-fns';
 import { errorEmitter } from "@/firebase/error-emitter";
@@ -44,7 +44,7 @@ export function ProcessDataButton() {
         });
 
         const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog));
-        const employees = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Employee }));
+        const employees = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
         const employeeMapByPersonnelId = new Map(employees.map(e => [e.employeeId, e]));
 
         const schedules = schedulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Schedule));
@@ -56,35 +56,57 @@ export function ProcessDataButton() {
         }
 
         const groupedByEmployeeAndDay: { [key: string]: AttendanceLog[] } = {};
-
-        logs.forEach(log => {
+        const newEmployeesToCreate = new Map<string, Omit<Employee, 'id'>>();
+        
+        for (const log of logs) {
             const trimmedPersonnelId = log.personnelId?.trim();
-            if (!trimmedPersonnelId || trimmedPersonnelId === 'Personnel ID') return;
+            if (!trimmedPersonnelId || trimmedPersonnelId === 'Personnel ID') continue;
             
-            const employee = employeeMapByPersonnelId.get(trimmedPersonnelId);
-            if (!employee) {
-                // We could reject the log here if no matching employee is found
-                return;
+            let employee = employeeMapByPersonnelId.get(trimmedPersonnelId);
+            
+            // If employee doesn't exist, queue for creation
+            if (!employee && !newEmployeesToCreate.has(trimmedPersonnelId)) {
+                console.log(`Nouvel employé détecté avec l'ID d'appareil: ${trimmedPersonnelId}. Création d'un profil provisoire.`);
+                const newEmployeeData: Omit<Employee, 'id'> = {
+                    authUid: null,
+                    employeeId: trimmedPersonnelId,
+                    name: `Employé (ID: ${trimmedPersonnelId})`,
+                    email: `placeholder+${trimmedPersonnelId}@miaraka.com`,
+                    department: "Non assigné",
+                    hourlyRate: 25000, // Default rate
+                };
+                newEmployeesToCreate.set(trimmedPersonnelId, newEmployeeData);
             }
 
             const trimmedDateTime = log.dateTime?.trim();
-            if (!trimmedDateTime) return;
+            if (!trimmedDateTime) continue;
             
             const logDate = parse(trimmedDateTime, "yyyy-MM-dd HH:mm:ss", new Date());
             if (!isValid(logDate)) {
                  console.warn(`Invalid date format for log entry: ${log.id}, dateTime: ${log.dateTime}`);
-                return;
+                continue;
             }
 
             const dayKey = format(logDate, 'yyyy-MM-dd');
-            const key = `${employee.id}-${dayKey}`; // Use Firestore employee ID now
+            // Use personnelId for temporary grouping until new employees have a Firestore ID
+            const key = `${trimmedPersonnelId}-${dayKey}`; 
             if (!groupedByEmployeeAndDay[key]) {
                 groupedByEmployeeAndDay[key] = [];
             }
             groupedByEmployeeAndDay[key].push(log);
-        });
-
+        };
+        
         const batch = writeBatch(firestore);
+
+        // Create new employees first
+        for (const [personnelId, employeeData] of newEmployeesToCreate.entries()) {
+            const newDocRef = doc(collection(firestore, "employees"));
+            const newEmployeeWithId = { ...employeeData, id: newDocRef.id };
+            batch.set(newDocRef, newEmployeeWithId);
+            employeeMapByPersonnelId.set(personnelId, newEmployeeWithId); // Add to map for current session
+        }
+
+
         let processedCount = 0;
         let rejectedCount = 0;
 
@@ -119,8 +141,10 @@ export function ProcessDataButton() {
                 continue;
             }
 
-            const [employeeId, date] = key.split(/-(.*)/s).slice(0, 2);
-            const employee = employees.find(e => e.id === employeeId);
+            const personnelId = key.split(/-(.*)/s)[0];
+            const date = key.split(/-(.*)/s)[1];
+            const employee = employeeMapByPersonnelId.get(personnelId);
+            if (!employee) continue; // Should not happen after creation logic, but as a safeguard
 
             let totalWorkedMs = 0;
             let lastCheckIn: Date | null = null;
@@ -156,12 +180,11 @@ export function ProcessDataButton() {
                  totalLateMinutes += (afternoonIn.getTime() - standardAfternoonIn.getTime()) / (1000 * 60);
             }
             
-            const schedule = schedules.find(s => s.employeeId === employeeId && s.date.toString() === date);
-
+            const schedule = schedules.find(s => s.employeeId === employee.id && s.date.toString() === date);
 
             const processedDoc: Omit<ProcessedAttendance, 'id'> = {
-                employee_id: employeeId,
-                employee_name: employee?.name,
+                employee_id: employee.id,
+                employee_name: employee.name,
                 date,
                 morning_in: morningIn ? format(morningIn, 'HH:mm') : null,
                 morning_out: morningOut ? format(morningOut, 'HH:mm') : null,
@@ -175,7 +198,7 @@ export function ProcessDataButton() {
                 taskDescription: schedule?.taskDescription || null,
             };
             
-            const docId = `${employeeId}-${date}`;
+            const docId = `${employee.id}-${date}`;
             const docRef = doc(firestore, "processedAttendance", docId);
             batch.set(docRef, processedDoc, { merge: true });
         }
@@ -189,6 +212,9 @@ export function ProcessDataButton() {
         });
 
         let toastMessage = `${processedCount} logs traités avec succès.`;
+        if (newEmployeesToCreate.size > 0) {
+            toastMessage += ` ${newEmployeesToCreate.size} nouveaux profils employés créés.`;
+        }
         if (rejectedCount > 0) {
             toastMessage += ` ${rejectedCount} logs ont été rejetés.`
         }
@@ -224,3 +250,4 @@ export function ProcessDataButton() {
 }
 
     
+
