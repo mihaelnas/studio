@@ -34,7 +34,11 @@ service cloud.firestore {
       allow get: if isAdminOrOwner(employeeId);
       // Only admins can list all employees.
       allow list: if isAppAdmin();
-      // Only admins can create, update, or delete employee profiles.
+
+      // Allow the VERY FIRST user to be created.
+      allow create: if size(get(/databases/$(database)/documents/employees).data) == 0;
+
+      // Only admins can update or delete employee profiles. Admins can also create new users.
       allow write: if isAppAdmin();
     }
     
@@ -89,5 +93,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
