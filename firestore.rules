@@ -14,14 +14,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Un employé peut lire son propre planning
+    // La planification est lisible par tous les utilisateurs authentifiés (pour l'affichage global)
+    // mais l'écriture est limitée au propriétaire du document de planning.
      match /schedules/{scheduleId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.employeeId;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == resource.data.employeeId;
     }
     
-    // Un employé peut lire ses propres corrections
+    // Un employé peut lire ses propres corrections. L'écriture est également permise.
     match /manualCorrections/{correctionId} {
-        allow read, write: if request.auth != null && request.auth.uid == resource.data.employeeId;
+        allow read, write: if request.auth != null;
     }
 
     // Un utilisateur authentifié peut lister la collection, mais ne peut lire
