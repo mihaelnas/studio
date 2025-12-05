@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader, Cog } from "lucide-react";
 import { useFirebase } from "@/firebase";
 import { collection, getDocs, writeBatch, doc, query, where } from "firebase/firestore";
-import type { AttendanceLog, ProcessedAttendance, Employee } from "@/lib/types";
+import type { AttendanceLog, ProcessedAttendance, Employee, Schedule } from "@/lib/types";
 import { format, parse, isValid } from 'date-fns';
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -37,9 +37,15 @@ export function ProcessDataButton() {
             errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'employees', operation: 'list' }));
             throw error;
         });
+        
+        const schedulesSnapshot = await getDocs(collection(firestore, "schedules")).catch(error => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'schedules', operation: 'list' }));
+            throw error;
+        });
 
         const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog));
         const existingEmployees = new Set(employeesSnapshot.docs.map(doc => doc.id));
+        const schedules = schedulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Schedule));
 
         if (logs.length === 0) {
             toast({ variant: "default", title: "Information", description: "Aucun nouveau log brut à traiter." });
@@ -49,6 +55,7 @@ export function ProcessDataButton() {
 
         const groupedByEmployeeAndDay: { [key: string]: AttendanceLog[] } = {};
         const employeesToCreate = new Map<string, Partial<Employee>>();
+        const schedulesMap = new Map(schedules.map(s => `${s.employeeId}-${s.date.toString()}`));
 
         logs.forEach(log => {
             const trimmedPersonnelId = log.personnelId?.trim();
@@ -163,6 +170,8 @@ export function ProcessDataButton() {
             }
             
             const employeeData = employeesToCreate.get(employeeId) || employeesSnapshot.docs.find(d => d.id === employeeId)?.data();
+            const schedule = schedules.find(s => s.employeeId === employeeId && s.date.toString() === date);
+
 
             const processedDoc: Omit<ProcessedAttendance, 'id'> = {
                 employee_id: employeeId,
@@ -177,6 +186,7 @@ export function ProcessDataButton() {
                 total_overtime_minutes: Math.max(0, Math.round(((total_worked_hours - 8) * 60))),
                 is_leave: false,
                 leave_type: null,
+                taskDescription: schedule?.taskDescription || null,
             };
             
             const docId = `${employeeId}-${date}`;
@@ -229,3 +239,5 @@ export function ProcessDataButton() {
     </Button>
   );
 }
+
+    

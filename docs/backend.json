@@ -423,7 +423,8 @@
         "total_late_minutes": { "type": "number" },
         "total_overtime_minutes": { "type": "number" },
         "is_leave": { "type": "boolean" },
-        "leave_type": { "type": "string" }
+        "leave_type": { "type": "string" },
+        "taskDescription": { "type": "string", "description": "The task assigned to the employee for that day." }
       },
       "required": [
         "id",
@@ -642,3 +643,5 @@
     "reasoning": "This Firestore structure is designed to support the Miaraka Health HR application, focusing on real-time attendance tracking, payroll management, absence prediction, and shift scheduling. The structure prioritizes authorization independence, clarity, and scalability, adhering to the core design principles. Each entity is stored in its own collection, with subcollections used to represent one-to-many relationships where appropriate.  Crucially, data required for authorization (such as user roles or group memberships) is denormalized to avoid costly and insecure `get()` calls in the security rules.  This also supports the necessary QAPs (Query Approval Patterns).  For example, the `attendanceRecords` subcollection denormalizes `employeeId` allowing secure listing of attendance records specific to a given employee. This structure facilitates clear and maintainable security rules, ensuring data access is controlled according to the application's requirements."
   }
 }
+
+    

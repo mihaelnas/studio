@@ -72,4 +72,7 @@ export type ProcessedAttendance = {
     total_overtime_minutes: number;
     is_leave: boolean;
     leave_type: string | null;
+    taskDescription: string | null;
 }
+
+    
