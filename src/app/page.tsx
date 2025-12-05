@@ -13,7 +13,9 @@ export default function RootPage() {
   useEffect(() => {
     if (!isUserLoading) {
       if (user) {
-        router.replace('/dashboard');
+        // For now, default to employee dashboard.
+        // A role check would happen here in the future.
+        router.replace('/my-dashboard');
       } else {
         router.replace('/login');
       }

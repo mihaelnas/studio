@@ -60,7 +60,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       {!isMyDashboard && (
         <Sidebar>
           <SidebarHeader className="p-2">
-            <div className="flex items-center gap-2.5 px-2">
+            <Link href="/dashboard" className="flex items-center gap-2.5 px-2">
                 <svg
                     viewBox="0 0 100 100"
                     fill="none"
@@ -81,7 +81,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     ></path>
                 </svg>
               <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">TimeSense HR</h1>
-            </div>
+            </Link>
           </SidebarHeader>
           <SidebarContent className="p-2">
             <SidebarNav />
