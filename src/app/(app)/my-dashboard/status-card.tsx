@@ -10,7 +10,7 @@ import type { AttendanceLog } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, LogIn, LogOut } from 'lucide-react';
-import { format, differenceInSeconds } from 'date-fns';
+import { format, differenceInSeconds, parseISO } from 'date-fns';
 
 const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -37,13 +37,13 @@ export function StatusCard() {
     const q = query(
         collection(firestore, 'attendanceLogs'),
         where('personnelId', '==', user.uid),
-        orderBy('createdAt', 'desc'),
+        orderBy('dateTime', 'desc'),
         limit(1)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
-            const log = snapshot.docs[0].data() as AttendanceLog;
+            const log = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as AttendanceLog;
             setLastLog(log);
         } else {
             setLastLog(null);
@@ -61,11 +61,19 @@ export function StatusCard() {
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
 
-    if (lastLog?.inOutStatus === 'Check-In') {
-      const checkInTime = new Date(lastLog.dateTime);
-      interval = setInterval(() => {
-        setElapsedTime(differenceInSeconds(new Date(), checkInTime));
-      }, 1000);
+    if (lastLog?.inOutStatus === 'Check-In' && lastLog.dateTime) {
+      try {
+        const checkInTime = new Date(lastLog.dateTime.replace(' ', 'T'));
+        if (!isNaN(checkInTime.getTime())) {
+          interval = setInterval(() => {
+            setElapsedTime(differenceInSeconds(new Date(), checkInTime));
+          }, 1000);
+        } else {
+             setElapsedTime(0);
+        }
+      } catch (e) {
+        setElapsedTime(0);
+      }
     } else {
       setElapsedTime(0);
     }
@@ -112,3 +120,4 @@ export function StatusCard() {
     </Card>
   );
 }
+
