@@ -31,11 +31,11 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
-            <FirebaseClientProvider>
-                <FirebaseErrorListener />
-                {children}
-            </FirebaseClientProvider>
-            <Toaster />
+          <FirebaseClientProvider>
+              <FirebaseErrorListener />
+              {children}
+          </FirebaseClientProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
