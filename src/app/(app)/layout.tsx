@@ -62,18 +62,16 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
           <SidebarHeader className="p-2">
             <div className="flex items-center gap-2.5 px-2">
                 <svg
-                    xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-6 w-6 text-primary"
-                >
-                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                    <path d="M12 6v6l4 2" />
-                </svg>
+                    fill="currentColor"
+                    className="h-7 w-7 text-primary"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10a9.96 9.96 0 006.33-2.134c-1.393-.56-2.505-1.553-3.08-2.735a7.485 7.485 0 01-6.497-6.497C7.553 9.04 6.56 7.928 6 6.535A9.96 9.96 0 002 12zm10 2.236a9.993 9.993 0 00-11.833 9.61c.143.91.455 1.766.91 2.531 1.488-1.076 2.51-2.748 2.82-4.592A5.5 5.5 0 0017.5 8.075c1.844.31 3.516 1.332 4.592 2.82.765-.455 1.62-.767 2.531-.91A9.993 9.993 0 0012 4.236z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
               <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">TimeSense HR</h1>
             </div>
           </SidebarHeader>
