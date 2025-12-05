@@ -1,6 +1,5 @@
 
-
-"use client";
+'use client';
 
 import React from "react";
 import { usePathname } from "next/navigation";
@@ -51,10 +50,10 @@ export function SidebarNav() {
         <React.Fragment key={group.title}>
           {groupIndex > 0 && <SidebarSeparator className="my-2" />}
           {group.items.map((item) => (
-            <SidebarMenuItem key={item.href + item.label}>
+            <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
-                isActive={pathname.startsWith(item.href)}
+                isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/')}
                 className="w-full justify-start"
                 tooltip={{children: item.label, side: "right", align: "center"}}
               >
