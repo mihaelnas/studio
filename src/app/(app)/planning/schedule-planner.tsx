@@ -16,6 +16,8 @@ import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-b
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const weekStartsOn = 1; // Monday
 
@@ -48,36 +50,49 @@ export function SchedulePlanner() {
   const [schedulesError, setSchedulesError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const fetchSchedules = async () => {
-        if (!firestore || !employees) return;
-        setSchedulesLoading(true);
-        try {
-            const weekEnd = addDays(weekStart, 6);
+    if (!firestore || !employees) return;
+
+    setSchedulesLoading(true);
+    setSchedules([]); // Clear previous schedules
+
+    const weekEnd = addDays(weekStart, 6);
+    const schedulePromises = employees.map(employee => {
+        const scheduleCollectionRef = collection(firestore, `employees/${employee.id}/schedules`);
+        const q = query(
+            scheduleCollectionRef,
+            where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
+            where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
+        );
+        return getDocs(q).catch(error => {
+            // Emit a detailed error for debugging security rules
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: scheduleCollectionRef.path,
+                operation: 'list'
+            }));
+            // Propagate the original error to be caught by Promise.all
+            throw error;
+        });
+    });
+
+    Promise.all(schedulePromises)
+        .then(snapshots => {
             const allSchedules: Schedule[] = [];
-            
-            // Iterate over employees to fetch schedules for each one
-            for (const employee of employees) {
-                const scheduleCollectionRef = collection(firestore, `employees/${employee.id}/schedules`);
-                const q = query(
-                    scheduleCollectionRef,
-                    where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
-                    where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
-                );
-                const snapshot = await getDocs(q);
+            snapshots.forEach(snapshot => {
                 snapshot.forEach(doc => {
                     allSchedules.push({ id: doc.id, ...doc.data() } as Schedule);
                 });
-            }
-
+            });
             setSchedules(allSchedules);
             setSchedulesError(null);
-        } catch (e: any) {
-            setSchedulesError(e);
-        } finally {
+        })
+        .catch((e: any) => {
+            // Set a generic error state for the UI
+            setSchedulesError(new Error("Impossible de charger les plannings."));
+        })
+        .finally(() => {
             setSchedulesLoading(false);
-        }
-    }
-    fetchSchedules();
+        });
+
   }, [firestore, weekStart, employees]);
 
 
@@ -163,7 +178,7 @@ export function SchedulePlanner() {
                         <Alert variant="destructive" className="m-4">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertTitle>Erreur de Chargement</AlertTitle>
-                            <AlertDescription>Impossible de charger les données de planification.</AlertDescription>
+                            <AlertDescription>{error.message}</AlertDescription>
                         </Alert>
                     </TableCell>
                 </TableRow>
