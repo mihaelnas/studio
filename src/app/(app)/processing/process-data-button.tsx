@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader, Cog } from "lucide-react";
 import { useFirebase } from "@/firebase";
-import { collection, getDocs, writeBatch, doc, query, where, serverTimestamp, addDoc, WriteBatch } from "firebase/firestore";
+import { collection, getDocs, writeBatch, doc, query, where, serverTimestamp, addDoc, WriteBatch, collectionGroup } from "firebase/firestore";
 import type { AttendanceLog, ProcessedAttendance, Employee, Schedule } from "@/lib/types";
 import { format, parse, isValid } from 'date-fns';
 import { errorEmitter } from "@/firebase/error-emitter";
@@ -38,7 +38,7 @@ export function ProcessDataButton() {
             throw error;
         });
         
-        const schedulesSnapshot = await getDocs(collection(firestore, "schedules")).catch(error => {
+        const schedulesSnapshot = await getDocs(collectionGroup(firestore, "schedules")).catch(error => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'schedules', operation: 'list' }));
             throw error;
         });
