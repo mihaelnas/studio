@@ -4,6 +4,7 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
 import { AppHeader } from "@/components/layout/header";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
