@@ -9,17 +9,17 @@ service cloud.firestore {
       // Let's assume for now, nobody is an admin to lock it down.
       return false;
     }
-
+    
     match /attendanceLogs/{logId} {
       allow read, write: if request.auth != null;
     }
 
     match /employees/{userId} {
+      // Any authenticated user can read employee data.
       allow list, get: if request.auth != null;
-      // Only the user themselves or an admin can update
-      allow update: if request.auth.uid == userId || isAppAdmin(request.auth.uid);
-      // Only an admin can create or delete
-      allow create, delete: if isAppAdmin(request.auth.uid);
+      // Any authenticated user can create, update, or delete employees for now.
+      // TODO: Restrict write access to HR Admins in a future update.
+      allow write: if request.auth != null;
     }
 
      match /schedules/{scheduleId} {
@@ -37,8 +37,8 @@ service cloud.firestore {
     match /payslips/{payslipId} {
         // Users should only be able to read their own payslips
         allow read: if request.auth != null && request.auth.uid == resource.data.employeeId;
-        // Writing payslips should be a server/admin process
-        allow write: if isAppAdmin(request.auth.uid);
+        // Writing payslips should be a server/admin process, for now allow any authenticated
+        allow write: if request.auth != null;
     }
 
     match /shifts/{shiftId} {
@@ -46,5 +46,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
