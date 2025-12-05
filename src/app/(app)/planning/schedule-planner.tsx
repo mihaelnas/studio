@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { TaskEditDialog } from './task-edit-dialog';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, FirestoreError, doc } from 'firebase/firestore';
+import { collection, query, where, FirestoreError, doc, collectionGroup, getDocs } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -40,19 +40,38 @@ export function SchedulePlanner() {
   const weekDays = useMemo(() => Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)), [weekStart]);
 
   const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
-  const schedulesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    const weekEnd = addDays(weekStart, 6);
-    return query(
-        collection(firestore, 'schedules'),
-        where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
-        where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
-    );
+  
+  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
+  
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(true);
+  const [schedulesError, setSchedulesError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchSchedules = async () => {
+        if (!firestore) return;
+        setSchedulesLoading(true);
+        try {
+            const weekEnd = addDays(weekStart, 6);
+            const q = query(
+                collectionGroup(firestore, 'schedules'),
+                where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
+                where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
+            );
+            const snapshot = await getDocs(q);
+            const schedulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Schedule));
+            setSchedules(schedulesData);
+            setSchedulesError(null);
+        } catch (e: any) {
+            setSchedulesError(e);
+        } finally {
+            setSchedulesLoading(false);
+        }
+    }
+    fetchSchedules();
   }, [firestore, weekStart]);
 
-  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
-  const { data: schedules, isLoading: schedulesLoading, error: schedulesError } = useCollection<Schedule>(schedulesQuery);
-  
+
   const isLoading = employeesLoading || schedulesLoading;
   const error = employeesError || schedulesError;
 
@@ -61,25 +80,36 @@ export function SchedulePlanner() {
     return schedules?.find(
       (schedule) =>
         schedule.employeeId === employeeId &&
-        schedule.date && new Date(schedule.date).toDateString() === day.toDateString()
+        schedule.date && new Date(schedule.date as string).toDateString() === day.toDateString()
     );
   };
   
   const handleSaveTask = (newScheduleData: Omit<Schedule, 'id'>) => {
-    if (!firestore) return;
-    const scheduleCollection = collection(firestore, 'schedules');
+    if (!firestore || !newScheduleData.employeeId) return;
+    
+    const dateStr = format(newScheduleData.date as Date, 'yyyy-MM-dd');
+    const scheduleCollectionRef = collection(firestore, `employees/${newScheduleData.employeeId}/schedules`);
 
-    const existingSchedule = schedules?.find(s => s.employeeId === newScheduleData.employeeId && new Date(s.date).toDateString() === new Date(newScheduleData.date).toDateString());
+    const existingSchedule = schedules?.find(s => 
+        s.employeeId === newScheduleData.employeeId && 
+        new Date(s.date as string).toDateString() === new Date(newScheduleData.date as string).toDateString()
+    );
 
     if (existingSchedule) {
-        const docRef = doc(firestore, 'schedules', existingSchedule.id);
+        const docRef = doc(firestore, `employees/${newScheduleData.employeeId}/schedules`, existingSchedule.id);
         setDocumentNonBlocking(docRef, { taskDescription: newScheduleData.taskDescription }, { merge: true });
     } else {
-        addDocumentNonBlocking(scheduleCollection, {
+        addDocumentNonBlocking(scheduleCollectionRef, {
             ...newScheduleData,
-            date: format(newScheduleData.date as Date, 'yyyy-MM-dd'),
+            date: dateStr,
         });
     }
+
+    // Optimistically update UI
+    setSchedules(prev => {
+        const otherSchedules = prev.filter(s => !(s.employeeId === newScheduleData.employeeId && new Date(s.date as string).toDateString() === new Date(newScheduleData.date as string).toDateString()));
+        return [...otherSchedules, { id: existingSchedule?.id || 'temp-id', ...newScheduleData, date: dateStr }];
+    });
   }
 
   const changeWeek = (direction: 'prev' | 'next') => {

@@ -53,8 +53,7 @@ export function MySchedule() {
   const scheduleQuery = useMemoFirebase(() => {
     if (!firestore || !employeeId) return null;
     return query(
-        collection(firestore, "schedules"), 
-        where("employeeId", "==", employeeId),
+        collection(firestore, `employees/${employeeId}/schedules`), 
         where("date", ">=", format(today, 'yyyy-MM-dd')),
         where("date", "<=", format(nextWeek, 'yyyy-MM-dd')),
         orderBy("date")

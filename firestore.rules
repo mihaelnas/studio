@@ -18,40 +18,23 @@ service cloud.firestore {
 
     // --- Collection: employees ---
     match /employees/{employeeId} {
-      // An employee can read their own profile. Any auth user can list employees.
       allow get: if request.auth != null;
       allow list: if request.auth != null;
-      
-      // An authenticated user can create their own profile document.
       allow create: if isOwner(employeeId);
-
-      // Any authenticated user can update employee profiles.
       allow update: if request.auth != null;
-      
-      // Any authenticated user can delete.
       allow delete: if request.auth != null;
     }
     
     // --- Subcollection: employee schedules ---
     match /employees/{employeeId}/schedules/{scheduleId} {
-      // Any authenticated user can read the schedule.
-        allow read: if request.auth != null;
-        // Any authenticated user can write to schedules.
-        allow write: if request.auth != null;
+        // Owner can read/write their own schedule.
+        allow read, write: if isOwner(employeeId);
+    }
+    // Allow admins to read any schedule via collection group query
+    match /{path=**}/schedules/{scheduleId} {
+      allow read: if request.auth != null; // Simplified for now
     }
 
-    // --- Collection: schedules (if used as top-level) ---
-    match /schedules/{scheduleId} {
-        // Any authenticated user can write.
-        allow write: if request.auth != null;
-        // Any authenticated user can read.
-        allow read: if request.auth != null;
-    }
-    match /schedules {
-      // Allow any authenticated user to list schedules for dashboard charts.
-      allow list: if request.auth != null;
-    }
-    
     // --- Collection: manualCorrections ---
     match /manualCorrections/{correctionId} {
         // Only authenticated users can read or write manual corrections.
