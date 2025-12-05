@@ -85,18 +85,16 @@ export function AddEmployeeDialog() {
     setIsSubmitting(true);
 
     try {
-      // NOTE: We're creating a user with email/password.
-      // This is a temporary credential system. A more robust solution might use
-      // a secondary, passwordless auth mechanism for employees or a dedicated user management system.
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      const employeeDocRef = doc(firestore, 'employees', user.uid);
+      // Use a new document reference with an auto-generated ID from Firestore
+      const newEmployeeDocRef = doc(collection(firestore, 'employees'));
       
-      await setDoc(employeeDocRef, {
-          id: user.uid,
+      await setDoc(newEmployeeDocRef, {
+          id: newEmployeeDocRef.id, // Store the auto-generated ID in the document itself
           authUid: user.uid,
-          employeeId: values.employeeId,
+          employeeId: values.employeeId, // The ID from the biometric device
           name: values.name,
           email: values.email,
           department: values.department,

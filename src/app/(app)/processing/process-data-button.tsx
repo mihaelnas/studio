@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader, Cog } from "lucide-react";
 import { useFirebase } from "@/firebase";
-import { collection, getDocs, writeBatch, doc, query, where, serverTimestamp, addDoc } from "firebase/firestore";
+import { collection, getDocs, writeBatch, doc, query, where, serverTimestamp, addDoc, WriteBatch } from "firebase/firestore";
 import type { AttendanceLog, ProcessedAttendance, Employee, Schedule } from "@/lib/types";
 import { format, parse, isValid } from 'date-fns';
 import { errorEmitter } from "@/firebase/error-emitter";
@@ -56,7 +56,7 @@ export function ProcessDataButton() {
         }
 
         const groupedByEmployeeAndDay: { [key: string]: AttendanceLog[] } = {};
-        const newEmployeesToCreate = new Map<string, Omit<Employee, 'id'>>();
+        const newEmployeesToCreate = new Map<string, Omit<Employee, 'id' | 'authUid'>>();
         
         for (const log of logs) {
             const trimmedPersonnelId = log.personnelId?.trim();
@@ -64,16 +64,14 @@ export function ProcessDataButton() {
             
             let employee = employeeMapByPersonnelId.get(trimmedPersonnelId);
             
-            // If employee doesn't exist, queue for creation
             if (!employee && !newEmployeesToCreate.has(trimmedPersonnelId)) {
                 console.log(`Nouvel employé détecté avec l'ID d'appareil: ${trimmedPersonnelId}. Création d'un profil provisoire.`);
-                const newEmployeeData: Omit<Employee, 'id'> = {
-                    authUid: null,
+                const newEmployeeData: Omit<Employee, 'id'| 'authUid'> = {
                     employeeId: trimmedPersonnelId,
                     name: `${log.firstName} ${log.lastName}`.trim() || `Employé (ID: ${trimmedPersonnelId})`,
                     email: `placeholder+${trimmedPersonnelId}@miaraka.com`,
                     department: "Non assigné",
-                    hourlyRate: 25000, // Default rate
+                    hourlyRate: 25000,
                 };
                 newEmployeesToCreate.set(trimmedPersonnelId, newEmployeeData);
             }
@@ -88,7 +86,6 @@ export function ProcessDataButton() {
             }
 
             const dayKey = format(logDate, 'yyyy-MM-dd');
-            // Use personnelId for temporary grouping until new employees have a Firestore ID
             const key = `${trimmedPersonnelId}-${dayKey}`; 
             if (!groupedByEmployeeAndDay[key]) {
                 groupedByEmployeeAndDay[key] = [];
@@ -101,8 +98,17 @@ export function ProcessDataButton() {
         // Create new employees first and get their new IDs
         for (const [personnelId, employeeData] of newEmployeesToCreate.entries()) {
             const newDocRef = doc(collection(firestore, "employees"));
-            const newEmployeeWithId = { ...employeeData, id: newDocRef.id };
+            const newEmployeeWithId: Employee = { 
+                ...employeeData, 
+                id: newDocRef.id, 
+                authUid: null
+            };
             batch.set(newDocRef, newEmployeeWithId);
+            await batch.commit(); // Commit this batch to get the new employee in the next step
+            
+            // Re-create batch for subsequent operations
+            const newBatch = writeBatch(firestore);
+
             employeeMapByPersonnelId.set(personnelId, newEmployeeWithId); // Add to map for current session
         }
 
