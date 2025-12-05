@@ -6,7 +6,7 @@ import { explainLatenessRisk } from '@/ai/flows/explain-lateness-risk';
 import { predictLatenessRisk } from '@/ai/flows/predict-lateness-risk';
 import type { PredictLatenessRiskOutput } from '@/ai/flows/predict-lateness-risk';
 import { generatePayslipEmail } from '@/ai/flows/send-payslip-flow';
-import { getFirestore, collection, getDocs, writeBatch, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, writeBatch, serverTimestamp, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeFirebaseServer } from '@/firebase/server-init';
 import type { Employee, ProcessedAttendance } from './types';
@@ -208,4 +208,60 @@ export async function activateEmployeeAccount(props: ActivateEmployeeAccountProp
     }
 }
 
+
+interface SignupUserProps {
+    name: string;
+    email: string;
+    password?: string;
+}
+
+export async function signupUser(props: SignupUserProps): Promise<{ success: boolean; message: string }> {
+    const { name, email, password } = props;
+
+    if (!password) {
+        return { success: false, message: "Le mot de passe est requis." };
+    }
+
+    const { auth, firestore } = initializeFirebaseServer();
+
+    try {
+        // Check if any employee exists to determine if this is the first user
+        const employeesCollection = collection(firestore, 'employees');
+        const existingEmployeesSnapshot = await getDocs(employeesCollection);
+        const isFirstUser = existingEmployeesSnapshot.empty;
+
+        // Create user in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Create employee document in Firestore, using the auth UID as the document ID
+        const employeeDocRef = doc(firestore, 'employees', user.uid);
+        await setDoc(employeeDocRef, {
+            id: user.uid,
+            authUid: user.uid,
+            employeeId: `EMP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`, // Placeholder biometric ID
+            name: name,
+            email: email,
+            role: isFirstUser ? 'admin' : 'employee', // Assign 'admin' role if it's the first user
+            department: "Non assigné",
+            hourlyRate: 25000,
+        });
+
+        const message = isFirstUser 
+            ? "Compte administrateur créé avec succès. Vous pouvez maintenant vous connecter."
+            : "Compte créé avec succès. Vous pouvez maintenant vous connecter.";
+        
+        return { success: true, message };
+
+    } catch (error: any) {
+        console.error("Erreur lors de la création du compte:", error);
+        let message = "Une erreur inconnue est survenue.";
+        if (error.code === 'auth/email-already-in-use') {
+            message = "Cette adresse e-mail est déjà utilisée par un autre compte.";
+        } else if (error.code === 'auth/weak-password') {
+            message = "Le mot de passe doit contenir au moins 6 caractères.";
+        }
+        return { success: false, message: message };
+    }
+}
     
