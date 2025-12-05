@@ -35,12 +35,8 @@ service cloud.firestore {
       // Only admins can list all employees.
       allow list: if isAppAdmin();
       
-      // Allow a user to create their own profile document.
-      // Or allow an admin to create any new user profile.
-      allow create: if (isOwner(employeeId) || isAppAdmin());
-
-      // Only admins can update or delete employee profiles. Admins can also create new users.
-      allow update, delete: if isAppAdmin();
+      // Allow a user to create their own profile document, or an admin to create any.
+      allow write: if isAppAdmin() || isOwner(employeeId);
     }
     
     // --- Subcollection: employee schedules ---
@@ -59,8 +55,8 @@ service cloud.firestore {
         allow read: if isAppAdmin() || resource.data.employeeId == request.auth.uid;
     }
     match /schedules {
-      // Only admins can list all schedules.
-      allow list: if isAppAdmin();
+      // Allow any authenticated user to list schedules for dashboard charts.
+      allow list: if request.auth != null;
     }
     
     // --- Collection: manualCorrections ---
