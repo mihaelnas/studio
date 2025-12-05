@@ -20,7 +20,7 @@ import { Stethoscope, Loader, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { signupUser } from "@/lib/actions";
 import { useFirebase } from "@/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit comporter au moins 2 caractères." }),
@@ -57,32 +57,45 @@ export default function SignupPage() {
     }
 
     try {
-      // 1. Create user in Firebase Auth on the client
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
+      let userId: string;
+
+      try {
+        // 1. Try to create user in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        userId = userCredential.user.uid;
+      } catch (error: any) {
+        // If it fails because the email is already in use, sign in to get the UID
+        if (error.code === 'auth/email-already-in-use') {
+          toast({ title: "Compte Existant", description: "Tentative de liaison du profil en base de données..."});
+          const signInCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+          userId = signInCredential.user.uid;
+        } else {
+          // Re-throw other auth errors (e.g., weak password)
+          throw error;
+        }
+      }
 
       // 2. Call server action to create the Firestore profile document
       const profileResult = await signupUser({
-        uid: user.uid,
+        uid: userId,
         name: values.name,
         email: values.email,
       });
 
       if (profileResult.success) {
         toast({
-          title: "Inscription Réussie",
+          title: "Opération Réussie",
           description: profileResult.message,
         });
         router.push("/login");
       } else {
-        // If the server action failed, throw its error message
         throw new Error(profileResult.message);
       }
 
     } catch (error: any) {
         let message = "Une erreur inconnue est survenue.";
-        if (error.code === 'auth/email-already-in-use') {
-            message = "Cette adresse e-mail est déjà utilisée par un autre compte.";
+        if (error.code === 'auth/wrong-password') {
+            message = "Le mot de passe est incorrect pour l'email existant.";
         } else if (error.code === 'auth/weak-password') {
             message = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
         } else {
@@ -92,7 +105,7 @@ export default function SignupPage() {
 
         toast({
             variant: "destructive",
-            title: "Échec de l'inscription",
+            title: "Échec de l'Opération",
             description: message,
         });
     } finally {
@@ -164,7 +177,7 @@ export default function SignupPage() {
             />
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-                S'inscrire
+                S'inscrire ou Lier le compte
             </Button>
           </form>
         </Form>

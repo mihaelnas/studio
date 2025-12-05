@@ -4,7 +4,7 @@ import { explainLatenessRisk } from '@/ai/flows/explain-lateness-risk';
 import { predictLatenessRisk } from '@/ai/flows/predict-lateness-risk';
 import type { PredictLatenessRiskOutput } from '@/ai/flows/predict-lateness-risk';
 import { generatePayslipEmail } from '@/ai/flows/send-payslip-flow';
-import { getFirestore, collection, getDocs, writeBatch, serverTimestamp, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, writeBatch, serverTimestamp, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { initializeFirebaseServer } from '@/firebase/server-init';
 import type { Employee, ProcessedAttendance } from './types';
 import { format } from 'date-fns';
@@ -177,7 +177,8 @@ export async function activateEmployeeAccount(props: ActivateEmployeeAccountProp
         }
         // This is a server action, it should use the Admin SDK if available, but here we use client SDK on server.
         // This might fail if not run in a proper environment. Let's assume it's set up to work.
-        const userCredential = await import('firebase/auth').then(mod => mod.createUserWithEmailAndPassword(auth, email, password));
+        const { createUserWithEmailAndPassword } = await import('firebase/auth');
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
         const employeeDocRef = doc(firestore, 'employees', employeeId);
@@ -212,15 +213,19 @@ interface SignupUserProps {
 
 export async function signupUser(props: SignupUserProps): Promise<{ success: boolean; message: string }> {
     const { uid, name, email } = props;
-
     const { firestore } = initializeFirebaseServer();
 
     try {
+        const employeeDocRef = doc(firestore, 'employees', uid);
+        const employeeDoc = await getDoc(employeeDocRef);
+
+        if (employeeDoc.exists()) {
+             return { success: true, message: "Profil déjà existant. Connexion réussie." };
+        }
+
         const employeesCollection = collection(firestore, 'employees');
         const existingEmployeesSnapshot = await getDocs(employeesCollection);
         const isFirstUser = existingEmployeesSnapshot.empty;
-
-        const employeeDocRef = doc(firestore, 'employees', uid);
         
         const newEmployeeData = {
             id: uid,
@@ -243,8 +248,6 @@ export async function signupUser(props: SignupUserProps): Promise<{ success: boo
 
     } catch (error: any) {
         console.error("Erreur lors de la création du profil utilisateur:", error);
-        // The error is now re-thrown so the client can see the real error message
-        // which will be caught by the development overlay.
         throw new Error("Une erreur est survenue lors de la création du profil en base de données. Détails: " + error.message);
     }
 }
