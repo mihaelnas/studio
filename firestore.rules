@@ -4,26 +4,32 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAppAdmin(userId) {
-      // In a real app, this would check a 'roles' subcollection or custom claims.
-      // For now, we can hardcode admin UIDs or check a field on the user document.
-      // Let's assume for now, nobody is an admin to lock it down.
+      // Pour l'instant, personne n'est admin. Cela verrouille les actions réservées aux admins.
+      // Dans une future version, cela vérifierait un rôle ou une réclamation personnalisée.
       return false;
     }
     
     match /attendanceLogs/{logId} {
+      // Tout utilisateur authentifié peut lire/écrire les logs bruts.
+      // Dans une application réelle, l'écriture devrait être limitée au backend via une clé API.
       allow read, write: if request.auth != null;
     }
 
-    match /employees/{userId} {
-      // Any authenticated user can read employee data.
+    match /employees/{employeeId} {
+      // Tout utilisateur authentifié peut lister/voir les employés.
       allow list, get: if request.auth != null;
-      // Any authenticated user can create, update, or delete employees for now.
-      // TODO: Restrict write access to HR Admins in a future update.
+      // Tout utilisateur authentifié peut créer/mettre à jour/supprimer.
+      // TODO: Restreindre l'écriture aux administrateurs RH.
       allow write: if request.auth != null;
     }
 
      match /schedules/{scheduleId} {
+      // Permet la lecture (get) et l'écriture (create, update, delete) de documents individuels.
       allow read, write: if request.auth != null;
+    }
+    match /schedules {
+        // Permet de lister (requêter) la collection entière. Nécessaire pour le planificateur.
+        allow list: if request.auth != null;
     }
     
     match /manualCorrections/{correctionId} {
@@ -35,9 +41,10 @@ service cloud.firestore {
     }
 
     match /payslips/{payslipId} {
-        // Users should only be able to read their own payslips
-        allow read: if request.auth != null && request.auth.uid == resource.data.employeeId;
-        // Writing payslips should be a server/admin process, for now allow any authenticated
+        // Les utilisateurs ne devraient pouvoir lire que leurs propres fiches de paie.
+        // NOTE : Actuellement, la liaison se fait par auth.uid, qui est le doc id de l'employé.
+        allow read: if request.auth != null && resource.data.employeeId == request.auth.uid;
+        // L'écriture des fiches de paie devrait être un processus serveur/admin.
         allow write: if request.auth != null;
     }
 
