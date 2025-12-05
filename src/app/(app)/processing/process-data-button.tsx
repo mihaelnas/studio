@@ -162,8 +162,11 @@ export function ProcessDataButton() {
                  totalLateMinutes += (afternoonIn.getTime() - standardAfternoonIn.getTime()) / (1000 * 60);
             }
             
+            const employeeData = employeesToCreate.get(employeeId) || employeesSnapshot.docs.find(d => d.id === employeeId)?.data();
+
             const processedDoc: Omit<ProcessedAttendance, 'id'> = {
                 employee_id: employeeId,
+                employee_name: employeeData?.name,
                 date,
                 morning_in: morningIn ? format(morningIn, 'HH:mm') : null,
                 morning_out: morningOut ? format(morningOut, 'HH:mm') : null,

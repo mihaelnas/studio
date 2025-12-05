@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from "react";
@@ -77,6 +78,7 @@ export function AddEmployeeDialog() {
 
     const employeeDocRef = doc(firestore, 'employees', values.id);
     
+    // Using an empty options object `{}` which defaults to an overwrite, not a merge
     setDocumentNonBlocking(employeeDocRef, values, {});
 
     toast({

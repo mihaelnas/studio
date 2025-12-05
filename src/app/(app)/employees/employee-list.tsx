@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from 'next/link';
@@ -13,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Pencil } from 'lucide-react';
 import { EmployeeEditDialog } from './[employeeId]/edit-dialog';
 import { Button } from '@/components/ui/button';
+import { AddEmployeeDialog } from './add-employee-dialog';
 
 const RowSkeleton = () => (
   <TableRow>
