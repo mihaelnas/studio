@@ -57,7 +57,7 @@ export default function LogsPage() {
 
   const attendanceLogsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, "attendanceLogs"), orderBy("createdAt", "desc"), limit(100));
+    return query(collection(firestore, "attendanceLogs"), orderBy("dateTime", "desc"), limit(100));
   }, [firestore]);
 
   const { data: attendanceLogs, isLoading, error } = useCollection<AttendanceLog>(attendanceLogsQuery);
