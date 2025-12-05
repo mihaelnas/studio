@@ -12,6 +12,8 @@ export type Employee = {
   hourlyRate?: number;
   latenessRisk?: 'Élevé' | 'Moyen' | 'Faible';
   historicalAttendanceData?: string;
+  totalOvertimeMinutes?: number;
+  totalLateMinutes?: number;
 };
 
 export type ManualCorrection = {
@@ -74,5 +76,3 @@ export type ProcessedAttendance = {
     leave_type: string | null;
     taskDescription: string | null;
 }
-
-    
