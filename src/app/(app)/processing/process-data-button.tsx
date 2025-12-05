@@ -1,6 +1,6 @@
 
 
-"use client";
+'use client';
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ export function ProcessDataButton() {
             groupedByEmployeeAndDay[key].push(log);
         };
         
-        const batch = writeBatch(firestore);
+        let batch = writeBatch(firestore);
 
         // Create new employees first and get their new IDs
         for (const [personnelId, employeeData] of newEmployeesToCreate.entries()) {
@@ -107,7 +107,7 @@ export function ProcessDataButton() {
             await batch.commit(); // Commit this batch to get the new employee in the next step
             
             // Re-create batch for subsequent operations
-            const newBatch = writeBatch(firestore);
+            batch = writeBatch(firestore);
 
             employeeMapByPersonnelId.set(personnelId, newEmployeeWithId); // Add to map for current session
         }

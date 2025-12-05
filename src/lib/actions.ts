@@ -1,4 +1,3 @@
-
 'use server';
 
 import { explainLatenessRisk } from '@/ai/flows/explain-lateness-risk';
@@ -234,6 +233,8 @@ export async function signupUser(props: SignupUserProps): Promise<{ success: boo
             hourlyRate: 25000,
         };
 
+        // This `setDoc` is the operation that is likely failing.
+        // It's wrapped in a try/catch, so the raw permission error is not visible.
         await setDoc(employeeDocRef, newEmployeeData);
 
         const message = isFirstUser 
@@ -244,6 +245,8 @@ export async function signupUser(props: SignupUserProps): Promise<{ success: boo
 
     } catch (error: any) {
         console.error("Erreur lors de la création du profil utilisateur:", error);
+        // The error is caught here, and a generic message is returned.
+        // This hides the detailed Firestore permission error from the client.
         return { success: false, message: "Une erreur est survenue lors de la création du profil en base de données." };
     }
 }

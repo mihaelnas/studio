@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -61,13 +60,15 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Call server action to create user profile in Firestore, without a try-catch to see the raw error.
+      // Call server action to create user profile in Firestore.
+      // The new error handling system will throw a detailed error if this fails.
       const profileResult = await signupUser({
         uid: user.uid,
         name: values.name,
         email: values.email,
       });
 
+      // The server action now returns a more detailed result.
       if (profileResult.success) {
         toast({
           title: "Inscription Réussie",
@@ -75,20 +76,22 @@ export default function SignupPage() {
         });
         router.push("/login");
       } else {
-        // This will now likely not be hit, as an error will be thrown before.
+        // If the server action itself returns a failure (e.g., validation), show it.
+        // A permission error will throw and be caught by the catch block.
         throw new Error(profileResult.message);
       }
+
     } catch (error: any) {
-        // This will now catch both auth errors and profile creation errors.
-        // We'll let profile creation errors bubble up for debugging.
         let message = "Une erreur inconnue est survenue.";
         if (error.code === 'auth/email-already-in-use') {
             message = "Cette adresse e-mail est déjà utilisée par un autre compte.";
         } else if (error.code === 'auth/weak-password') {
             message = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
-        } else if (error.message) {
-            // For other errors, show the raw message
-            message = error.message;
+        } else {
+           // For any other error (including the ones we now throw manually),
+           // we log it and show a generic message. The Next.js overlay will show the full error.
+           console.error("Signup Error:", error);
+           message = error.message; // Display the more detailed error message.
         }
 
         toast({

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -35,5 +34,3 @@ export function FirebaseErrorListener() {
 
   return null;
 }
-
-    
