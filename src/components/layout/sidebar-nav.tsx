@@ -1,17 +1,24 @@
 
+
 "use client";
 
 import React from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarSeparator } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, CalendarDays, Upload, History, Cog, BarChart, BrainCircuit, Wrench, FileSpreadsheet } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, Upload, History, Cog, BarChart, BrainCircuit, Wrench, FileSpreadsheet, UserSquare } from "lucide-react";
 
 const navGroups = [
   {
+    title: "Mon Espace",
+    items: [
+      { href: "/my-dashboard", label: "Mon Tableau de Bord", icon: UserSquare },
+    ],
+  },
+  {
     title: "Gestion RH",
     items: [
-      { href: "/dashboard", label: "Tableau de Bord", icon: LayoutDashboard },
+      { href: "/dashboard", label: "Tableau de Bord RH", icon: LayoutDashboard },
       { href: "/employees", label: "Employés", icon: Users },
       { href: "/planning", label: "Planning Tâches", icon: CalendarDays },
     ],
