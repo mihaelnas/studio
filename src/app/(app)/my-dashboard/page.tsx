@@ -1,12 +1,14 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MyLogsTable } from "./my-logs-table";
+import { MySchedule } from "./my-schedule";
 import { StatusCard } from "./status-card";
 
 export default function MyDashboardPage() {
   return (
     <div className="flex flex-col gap-8">
         <StatusCard />
+        <MySchedule />
         <Card>
             <CardHeader>
                 <CardTitle>Mon Historique de Pointage</CardTitle>
