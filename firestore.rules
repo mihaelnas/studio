@@ -6,8 +6,7 @@ service cloud.firestore {
     // N'importe quel utilisateur authentifié peut lire les logs,
     // mais seuls les scripts avec une clé secrète peuvent écrire (géré côté backend/API)
     match /attendanceLogs/{logId} {
-      allow read: if request.auth != null;
-      allow write: if true; // Pour l'API ou les scripts d'import
+      allow read, write: if request.auth != null;
     }
 
     // Les employés ne peuvent lire et écrire que dans leur propre document
@@ -25,9 +24,11 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == resource.data.employeeId;
     }
 
-    // Les données de présence traitées sont lisibles par l'employé concerné
+    // Un utilisateur authentifié peut lister la collection, mais ne peut lire
+    // un document individuel que s'il s'agit du sien.
     match /processedAttendance/{recordId} {
-        allow read, write: if request.auth != null && request.auth.uid == resource.data.employee_id;
+        allow list, get, write: if request.auth != null;
+        allow read: if request.auth != null && request.auth.uid == resource.data.employee_id;
     }
 
     // Les fiches de paie sont lisibles par l'employé concerné
@@ -35,10 +36,9 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == resource.data.employeeId;
     }
 
-    // Règle générale plus restrictive : par défaut, personne ne peut accéder
-    // à une collection qui n'est pas explicitement définie ci-dessus.
-    match /{document=**} {
-      allow read, write: if false;
+    // Les shifts sont lisibles par tous les utilisateurs authentifiés
+    match /shifts/{shiftId} {
+      allow read: if request.auth != null;
     }
   }
 }
