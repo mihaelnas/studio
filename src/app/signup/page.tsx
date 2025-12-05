@@ -57,18 +57,17 @@ export default function SignupPage() {
     }
 
     try {
+      // 1. Create user in Firebase Auth on the client
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Call server action to create user profile in Firestore.
-      // The new error handling system will throw a detailed error if this fails.
+      // 2. Call server action to create the Firestore profile document
       const profileResult = await signupUser({
         uid: user.uid,
         name: values.name,
         email: values.email,
       });
 
-      // The server action now returns a more detailed result.
       if (profileResult.success) {
         toast({
           title: "Inscription Réussie",
@@ -76,8 +75,7 @@ export default function SignupPage() {
         });
         router.push("/login");
       } else {
-        // If the server action itself returns a failure (e.g., validation), show it.
-        // A permission error will throw and be caught by the catch block.
+        // If the server action failed, throw its error message
         throw new Error(profileResult.message);
       }
 
@@ -88,10 +86,8 @@ export default function SignupPage() {
         } else if (error.code === 'auth/weak-password') {
             message = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
         } else {
-           // For any other error (including the ones we now throw manually),
-           // we log it and show a generic message. The Next.js overlay will show the full error.
            console.error("Signup Error:", error);
-           message = error.message; // Display the more detailed error message.
+           message = error.message; 
         }
 
         toast({
