@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { getDoc, doc } from "firebase/firestore";
+import type { Employee } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { Stethoscope, Loader, Eye, EyeOff } from "lucide-react";
@@ -29,7 +31,7 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const { toast } = useToast();
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -43,17 +45,31 @@ export default function LoginPage() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth) return;
+    if (!auth || !firestore) return;
     setIsLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // Fetch user's profile from Firestore to check their role
+      const employeeDocRef = doc(firestore, 'employees', user.uid);
+      const employeeDoc = await getDoc(employeeDocRef);
+
+      let redirectPath = '/my-dashboard'; // Default path for employees
+      if (employeeDoc.exists()) {
+        const employeeData = employeeDoc.data() as Employee;
+        if (employeeData.role === 'admin') {
+          redirectPath = '/dashboard'; // Path for admins
+        }
+      }
+      
       toast({
         title: "Connexion réussie",
         description: "Bienvenue !",
       });
-      // Redirect all users to their dashboard first. Admins can navigate elsewhere from there.
-      router.push("/my-dashboard"); 
+
+      router.push(redirectPath); 
     } catch (error: any) {
       let description = "Une erreur inconnue est survenue.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {

@@ -9,6 +9,12 @@ import { LayoutDashboard, Users, CalendarDays, Upload, History, Cog, BarChart, B
 
 const navGroups = [
   {
+    title: "Mon Espace",
+    items: [
+      { href: "/my-dashboard", label: "Mon Tableau de Bord", icon: UserSquare },
+    ]
+  },
+  {
     title: "Gestion RH",
     items: [
       { href: "/dashboard", label: "Tableau de Bord RH", icon: LayoutDashboard },
