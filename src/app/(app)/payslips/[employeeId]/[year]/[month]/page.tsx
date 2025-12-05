@@ -3,7 +3,7 @@
 'use client';
 
 import { useParams, notFound, useRouter } from 'next/navigation';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -11,11 +11,13 @@ import { doc, collection, query, where, getDocs, FirestoreError } from 'firebase
 import type { Employee, ProcessedAttendance } from '@/lib/types';
 import { format, parse, startOfMonth, endOfMonth, getMonth, getYear } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Download, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -75,6 +77,8 @@ export default function PayslipPage() {
     const router = useRouter();
     const { employeeId, year, month } = params;
     const { firestore } = useFirebase();
+    const payslipRef = useRef<HTMLDivElement>(null);
+    const [isExporting, setIsExporting] = useState(false);
 
     const employeeDocRef = useMemoFirebase(() => 
         firestore && employeeId ? doc(firestore, 'employees', employeeId as string) : null,
@@ -133,6 +137,41 @@ export default function PayslipPage() {
         };
     }, [employee, attendance, year, month]);
 
+    const handleExport = async () => {
+        if (!payslipRef.current || !payslipData) return;
+        setIsExporting(true);
+        try {
+            const canvas = await html2canvas(payslipRef.current, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = imgWidth / imgHeight;
+            const newImgWidth = pdfWidth;
+            const newImgHeight = newImgWidth / ratio;
+            
+            let position = 0;
+            if (newImgHeight > pdfHeight) {
+                // If content is taller than one page, it will be scaled down to fit.
+                // For multi-page, more complex logic is needed. This is a simple fit-to-page.
+                pdf.addImage(imgData, 'PNG', 0, position, newImgWidth, newImgHeight);
+            } else {
+                 pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, newImgHeight);
+            }
+            
+            const filename = `Fiche_de_Paie_${payslipData.employee.name.replace(/ /g, '_')}_${payslipData.payPeriod.replace(/ /g, '_')}.pdf`;
+            pdf.save(filename);
+        } catch (error) {
+            console.error("Erreur lors de l'exportation PDF:", error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+
     const isLoading = employeeLoading || attendanceLoading;
     const error = employeeError || attendanceError;
 
@@ -168,11 +207,17 @@ export default function PayslipPage() {
     
     return (
         <div className="space-y-4">
-            <Button variant="outline" onClick={() => router.back()}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour
-            </Button>
-            <Card className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+             <div className="flex justify-between items-center">
+                <Button variant="outline" onClick={() => router.back()}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Retour
+                </Button>
+                <Button onClick={handleExport} disabled={isExporting}>
+                    {isExporting ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    {isExporting ? 'Exportation...' : 'Exporter en PDF'}
+                </Button>
+            </div>
+            <Card className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8" ref={payslipRef}>
                 <CardHeader className="text-center">
                     <CardTitle className="text-3xl">Fiche de Paie</CardTitle>
                     <CardDescription className="text-lg capitalize">{payslipData.payPeriod}</CardDescription>
