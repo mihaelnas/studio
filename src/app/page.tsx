@@ -14,7 +14,6 @@ export default function RootPage() {
     if (!isUserLoading) {
       if (user) {
         // Redirect to the main admin dashboard by default.
-        // Employees can navigate to /my-dashboard.
         router.replace('/dashboard');
       } else {
         router.replace('/login');
