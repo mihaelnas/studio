@@ -3,7 +3,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect } from "react";
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
 import { AppHeader } from "@/components/layout/header";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 function AppLayoutContent({ children }: { children: ReactNode }) {
   const { auth, user, isUserLoading } = useFirebase();
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -52,26 +53,30 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     );
   }
   
+  const isMyDashboard = pathname === '/my-dashboard';
+
   return (
     <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader className="p-2">
-          <div className="flex items-center gap-2.5 px-2">
-            <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">TimeSense HR</h1>
-          </div>
-        </SidebarHeader>
-        <SidebarContent className="p-2">
-          <SidebarNav />
-        </SidebarContent>
-        <SidebarFooter className="p-2">
-            <Button onClick={handleSignOut} variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" tooltip={{children: 'Se Déconnecter', side: 'right', align: 'center'}}>
-                
-                    <LogOut className="mr-2 h-5 w-5 shrink-0" />
-                    <span className="group-data-[collapsible=icon]:hidden">Se Déconnecter</span>
-                
-            </Button>
-        </SidebarFooter>
-      </Sidebar>
+      {!isMyDashboard && (
+        <Sidebar>
+          <SidebarHeader className="p-2">
+            <div className="flex items-center gap-2.5 px-2">
+              <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">TimeSense HR</h1>
+            </div>
+          </SidebarHeader>
+          <SidebarContent className="p-2">
+            <SidebarNav />
+          </SidebarContent>
+          <SidebarFooter className="p-2">
+              <Button onClick={handleSignOut} variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" tooltip={{children: 'Se Déconnecter', side: 'right', align: 'center'}}>
+                  
+                      <LogOut className="mr-2 h-5 w-5 shrink-0" />
+                      <span className="group-data-[collapsible=icon]:hidden">Se Déconnecter</span>
+                  
+              </Button>
+          </SidebarFooter>
+        </Sidebar>
+      )}
       <SidebarInset>
         <AppHeader />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
