@@ -57,10 +57,17 @@ export default function LogsPage() {
 
   const attendanceLogsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, "attendanceLogs"), orderBy("dateTime", "desc"), limit(100));
+    // We remove the orderBy clause to avoid index errors. Sorting will be done client-side.
+    return query(collection(firestore, "attendanceLogs"), limit(200));
   }, [firestore]);
 
   const { data: attendanceLogs, isLoading, error } = useCollection<AttendanceLog>(attendanceLogsQuery);
+
+  const sortedLogs = useMemo(() => {
+    if (!attendanceLogs) return [];
+    return [...attendanceLogs].sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+  }, [attendanceLogs]);
+
 
   return (
     <Card>
@@ -106,8 +113,8 @@ export default function LogsPage() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ) : attendanceLogs && attendanceLogs.length > 0 ? (
-                        attendanceLogs.map((log) => (
+                    ) : sortedLogs && sortedLogs.length > 0 ? (
+                        sortedLogs.map((log) => (
                             <TableRow key={log.id}>
                                 <TableCell><StatusBadge log={log} /></TableCell>
                                 <TableCell>{log.dateTime}</TableCell>

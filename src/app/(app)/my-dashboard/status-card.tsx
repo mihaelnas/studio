@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot, getDocs } from 'firebase/firestore';
 import type { AttendanceLog } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -32,19 +32,22 @@ export function StatusCard() {
     if (!firestore || !user) {
         setIsLoading(false);
         return;
-    };
+    }
 
     const q = query(
         collection(firestore, 'attendanceLogs'),
         where('personnelId', '==', user.uid),
-        orderBy('dateTime', 'desc'),
-        limit(1)
+        // We remove the orderBy clause to avoid needing a composite index.
+        // We will fetch a larger set and sort client-side.
+        limit(50) 
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
-            const log = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as AttendanceLog;
-            setLastLog(log);
+            // Sort client-side to find the most recent log
+            const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceLog));
+            const sortedLogs = logs.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+            setLastLog(sortedLogs[0]);
         } else {
             setLastLog(null);
         }
@@ -57,6 +60,7 @@ export function StatusCard() {
 
     return () => unsubscribe();
   }, [firestore, user]);
+
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
@@ -120,4 +124,3 @@ export function StatusCard() {
     </Card>
   );
 }
-

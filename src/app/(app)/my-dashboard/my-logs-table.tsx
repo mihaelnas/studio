@@ -60,12 +60,18 @@ export function MyLogsTable() {
     return query(
         collection(firestore, "attendanceLogs"), 
         where("personnelId", "==", user.uid),
-        orderBy("dateTime", "desc"), 
-        limit(50)
+        // We remove the orderBy clause to avoid needing a composite index.
+        // Sorting will be done client-side.
+        limit(100)
     );
   }, [firestore, user]);
 
   const { data: attendanceLogs, isLoading, error } = useCollection<AttendanceLog>(attendanceLogsQuery);
+
+  const sortedLogs = useMemo(() => {
+    if (!attendanceLogs) return [];
+    return [...attendanceLogs].sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+  }, [attendanceLogs]);
 
   return (
         <div className="rounded-md border">
@@ -97,8 +103,8 @@ export function MyLogsTable() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ) : attendanceLogs && attendanceLogs.length > 0 ? (
-                        attendanceLogs.map((log) => (
+                    ) : sortedLogs && sortedLogs.length > 0 ? (
+                        sortedLogs.map((log) => (
                             <TableRow key={log.id}>
                                 <TableCell><StatusBadge log={log} /></TableCell>
                                 <TableCell>{log.dateTime}</TableCell>
