@@ -7,7 +7,6 @@ import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui
 import { LayoutDashboard, Wrench, Upload, FileSpreadsheet, CalendarDays, History, BarChart, Cog, Users, UserSquare } from "lucide-react";
 
 const navItems = [
-  { href: "/my-dashboard", label: "Mon Tableau de Bord", icon: UserSquare },
   { href: "/dashboard", label: "Tableau de Bord RH", icon: LayoutDashboard },
   { href: "/employees", label: "Employés", icon: Users },
   { href: "/planning", label: "Planning Tâches", icon: CalendarDays },
