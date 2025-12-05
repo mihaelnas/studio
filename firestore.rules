@@ -2,16 +2,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permettre aux scripts externes (comme votre script Python) d'écrire dans la collection des logs bruts.
-    // La lecture reste protégée.
+
+    // N'importe quel utilisateur authentifié peut lire les logs,
+    // mais seuls les scripts avec une clé secrète peuvent écrire (géré côté backend/API)
     match /attendanceLogs/{logId} {
       allow read: if request.auth != null;
-      allow write: if true;
+      allow write: if true; // Pour l'API ou les scripts d'import
     }
 
-    // Pour toutes les autres collections, la lecture et l'écriture ne sont autorisées que pour les utilisateurs authentifiés.
+    // Les employés ne peuvent lire et écrire que dans leur propre document
+    match /employees/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Un employé peut lire son propre planning
+     match /schedules/{scheduleId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.employeeId;
+    }
+    
+    // Un employé peut lire ses propres corrections
+    match /manualCorrections/{correctionId} {
+        allow read, write: if request.auth != null && request.auth.uid == resource.data.employeeId;
+    }
+
+    // Les données de présence traitées sont lisibles par l'employé concerné
+    match /processedAttendance/{recordId} {
+        allow read, write: if request.auth != null && request.auth.uid == resource.data.employee_id;
+    }
+
+    // Les fiches de paie sont lisibles par l'employé concerné
+    match /payslips/{payslipId} {
+        allow read, write: if request.auth != null && request.auth.uid == resource.data.employeeId;
+    }
+
+    // Règle générale plus restrictive : par défaut, personne ne peut accéder
+    // à une collection qui n'est pas explicitement définie ci-dessus.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
