@@ -6,8 +6,9 @@ import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
-import { useFirebase } from '@/firebase';
-import { collection, getDocs, FirestoreError } from 'firebase/firestore';
+import { useFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, FirestoreError } from 'firebase/firestore';
 import type { Employee, ProcessedAttendance } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -43,8 +44,6 @@ interface PayrollData {
 export function PayrollTable() {
     const { firestore } = useFirebase();
     const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<FirestoreError | null>(null);
 
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -53,61 +52,50 @@ export function PayrollTable() {
         year: currentYear
     }), [currentMonth, currentYear]);
 
+    const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
+    const attendanceQuery = useMemoFirebase(() => firestore ? collection(firestore, 'processedAttendance') : null, [firestore]);
+    
+    const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
+    const { data: attendance, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
+
     useEffect(() => {
-        if (!firestore) return;
+        if (!employees || !attendance) return;
 
-        const fetchData = async () => {
-            setIsLoading(true);
-            try {
-                const employeesSnapshot = await getDocs(collection(firestore, 'employees'));
-                const attendanceSnapshot = await getDocs(collection(firestore, 'processedAttendance'));
+        const payrollMap = new Map<string, { totalHours: number; overtimeHours: number }>();
 
-                const employees = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-                const attendance = attendanceSnapshot.docs.map(doc => doc.data() as ProcessedAttendance);
-                
-                const payrollMap = new Map<string, { totalHours: number; overtimeHours: number }>();
-
-                attendance.forEach(record => {
-                    const recordDate = new Date(record.date);
-                    if (recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear) {
-                        const current = payrollMap.get(record.employee_id) || { totalHours: 0, overtimeHours: 0 };
-                        current.totalHours += record.total_worked_hours;
-                        current.overtimeHours += record.total_overtime_minutes > 0 ? record.total_overtime_minutes / 60 : 0;
-                        payrollMap.set(record.employee_id, current);
-                    }
-                });
-
-                const calculatedPayroll = employees.map(employee => {
-                    const hourlyRate = employee.hourlyRate || 25000;
-                    const data = payrollMap.get(employee.id) || { totalHours: 0, overtimeHours: 0 };
-                    
-                    const basePay = (data.totalHours - data.overtimeHours) * hourlyRate;
-                    const overtimePay = data.overtimeHours * hourlyRate * 1.5; // Overtime at 150%
-                    const grossSalary = basePay + overtimePay;
-
-                    return {
-                        employeeId: employee.id,
-                        name: employee.name,
-                        department: employee.department,
-                        totalHours: data.totalHours,
-                        totalOvertime: data.overtimeHours,
-                        grossSalary,
-                    };
-                }).sort((a,b) => b.grossSalary - a.grossSalary);
-
-                setPayrollData(calculatedPayroll);
-                setError(null);
-            } catch (err) {
-                console.error(err);
-                setError(err as FirestoreError);
-            } finally {
-                setIsLoading(false);
+        attendance.forEach(record => {
+            const recordDate = new Date(record.date);
+            if (recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear) {
+                const current = payrollMap.get(record.employee_id) || { totalHours: 0, overtimeHours: 0 };
+                current.totalHours += record.total_worked_hours;
+                current.overtimeHours += record.total_overtime_minutes > 0 ? record.total_overtime_minutes / 60 : 0;
+                payrollMap.set(record.employee_id, current);
             }
-        };
+        });
 
-        fetchData();
-    }, [firestore, currentMonth, currentYear]);
+        const calculatedPayroll = employees.map(employee => {
+            const hourlyRate = employee.hourlyRate || 25000;
+            const data = payrollMap.get(employee.id) || { totalHours: 0, overtimeHours: 0 };
+            
+            const basePay = (data.totalHours - data.overtimeHours) * hourlyRate;
+            const overtimePay = data.overtimeHours * hourlyRate * 1.5; // Overtime at 150%
+            const grossSalary = basePay + overtimePay;
 
+            return {
+                employeeId: employee.id,
+                name: employee.name,
+                department: employee.department,
+                totalHours: data.totalHours,
+                totalOvertime: data.overtimeHours,
+                grossSalary,
+            };
+        }).sort((a,b) => b.grossSalary - a.grossSalary);
+
+        setPayrollData(calculatedPayroll);
+    }, [employees, attendance, currentMonth, currentYear]);
+
+    const isLoading = employeesLoading || attendanceLoading;
+    const error = employeesError || attendanceError;
 
   return (
     <div className="rounded-md border">

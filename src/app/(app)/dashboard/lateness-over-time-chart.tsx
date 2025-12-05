@@ -9,8 +9,9 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import { useFirebase } from "@/firebase";
-import { collection, getDocs, FirestoreError } from "firebase/firestore";
+import { useFirebase, useMemoFirebase } from "@/firebase";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { collection, FirestoreError } from "firebase/firestore";
 import type { ProcessedAttendance } from "@/lib/types";
 import { format, subMonths, startOfMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -28,53 +29,36 @@ const chartConfig = {
 
 export function LatenessOverTimeChart() {
   const { firestore } = useFirebase();
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<FirestoreError | null>(null);
 
-  useEffect(() => {
-    if (!firestore) return;
+  const attendanceQuery = useMemoFirebase(() => firestore ? collection(firestore, 'processedAttendance') : null, [firestore]);
+  const { data: attendance, isLoading, error } = useCollection<ProcessedAttendance>(attendanceQuery);
 
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            const attendanceSnapshot = await getDocs(collection(firestore, 'processedAttendance'));
-            const attendance = attendanceSnapshot.docs.map(doc => doc.data() as ProcessedAttendance);
+  const chartData = useMemo(() => {
+    if (!attendance) return [];
 
-            const sixMonthsAgo = subMonths(new Date(), 5);
-            const monthlyLateness: { [key: string]: number } = {};
-            
-            for (let i = 0; i < 6; i++) {
-                const date = startOfMonth(subMonths(new Date(), i));
-                const monthKey = format(date, 'yyyy-MM');
-                monthlyLateness[monthKey] = 0;
-            }
+    const sixMonthsAgo = subMonths(new Date(), 5);
+    const monthlyLateness: { [key: string]: number } = {};
+    
+    for (let i = 0; i < 6; i++) {
+        const date = startOfMonth(subMonths(new Date(), i));
+        const monthKey = format(date, 'yyyy-MM');
+        monthlyLateness[monthKey] = 0;
+    }
 
-            attendance.forEach(record => {
-                const recordDate = new Date(record.date);
-                if (recordDate >= startOfMonth(sixMonthsAgo)) {
-                    const monthKey = format(recordDate, 'yyyy-MM');
-                    monthlyLateness[monthKey] = (monthlyLateness[monthKey] || 0) + record.total_late_minutes;
-                }
-            });
-            
-            const data = Object.entries(monthlyLateness)
-                .map(([month, retards]) => ({ month, retards }))
-                .sort((a,b) => a.month.localeCompare(b.month))
-                .map(d => ({ ...d, month: format(new Date(d.month), "MMM", { locale: fr })}));
-
-            setChartData(data);
-            setError(null);
-        } catch (err) {
-            console.error(err);
-            setError(err as FirestoreError);
-        } finally {
-            setIsLoading(false);
+    attendance.forEach(record => {
+        const recordDate = new Date(record.date);
+        if (recordDate >= startOfMonth(sixMonthsAgo)) {
+            const monthKey = format(recordDate, 'yyyy-MM');
+            monthlyLateness[monthKey] = (monthlyLateness[monthKey] || 0) + record.total_late_minutes;
         }
-    };
+    });
+    
+    return Object.entries(monthlyLateness)
+        .map(([month, retards]) => ({ month, retards }))
+        .sort((a,b) => a.month.localeCompare(b.month))
+        .map(d => ({ ...d, month: format(new Date(d.month), "MMM", { locale: fr })}));
 
-    fetchData();
-  }, [firestore]);
+  }, [attendance]);
 
 
   if (isLoading) {

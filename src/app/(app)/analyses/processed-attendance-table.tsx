@@ -5,8 +5,9 @@ import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { ProcessedAttendance } from "@/lib/types";
-import { useFirebase } from "@/firebase";
-import { collection, query, orderBy, getDocs, FirestoreError } from 'firebase/firestore';
+import { useFirebase, useMemoFirebase } from "@/firebase";
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, orderBy, FirestoreError } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -40,35 +41,16 @@ const RowSkeleton = () => (
 
 export function ProcessedAttendanceTable() {
   const { firestore } = useFirebase();
-  const [data, setData] = useState<ProcessedAttendance[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<FirestoreError | null>(null);
 
-
-  useEffect(() => {
-    if (!firestore) return;
-
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            const attendanceQuery = query(
-                collection(firestore, 'processedAttendance'), 
-                orderBy('date', 'desc')
-            );
-            const snapshot = await getDocs(attendanceQuery);
-            const attendanceData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProcessedAttendance));
-            setData(attendanceData);
-            setError(null);
-        } catch (err) {
-            console.error(err);
-            setError(err as FirestoreError);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    fetchData();
+  const attendanceQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+        collection(firestore, 'processedAttendance'), 
+        orderBy('date', 'desc')
+    );
   }, [firestore]);
+
+  const { data, isLoading, error } = useCollection<ProcessedAttendance>(attendanceQuery);
   
   const showNoDataMessage = !isLoading && !error && (!data || data.length === 0);
 
@@ -143,4 +125,3 @@ export function ProcessedAttendanceTable() {
     </div>
   );
 }
-

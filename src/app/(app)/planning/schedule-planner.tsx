@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { TaskEditDialog } from './task-edit-dialog';
 import { useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, FirestoreError, doc } from 'firebase/firestore';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, where, FirestoreError, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -35,50 +36,25 @@ export function SchedulePlanner() {
   const { firestore } = useFirebase();
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const [employees, setEmployees] = useState<Employee[] | null>(null);
-  const [schedules, setSchedules] = useState<Schedule[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<FirestoreError | null>(null);
-
-
   const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn, locale: fr }), [currentDate]);
   const weekDays = useMemo(() => Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)), [weekStart]);
 
-  useEffect(() => {
-    if (!firestore) return;
-    
-    const fetchAllData = async () => {
-        setIsLoading(true);
-        try {
-            const employeesQuery = collection(firestore, 'employees');
-            const weekEnd = addDays(weekStart, 6);
-            const schedulesQuery = query(
-                collection(firestore, 'schedules'),
-                where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
-                where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
-            );
-
-            const [employeesSnapshot, schedulesSnapshot] = await Promise.all([
-                getDocs(employeesQuery),
-                getDocs(schedulesQuery)
-            ]);
-
-            const employeeData = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-            const scheduleData = schedulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Schedule));
-
-            setEmployees(employeeData);
-            setSchedules(scheduleData);
-            setError(null);
-        } catch (err) {
-            console.error(err);
-            setError(err as FirestoreError);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    fetchAllData();
+  const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
+  const schedulesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const weekEnd = addDays(weekStart, 6);
+    return query(
+        collection(firestore, 'schedules'),
+        where('date', '>=', format(weekStart, 'yyyy-MM-dd')),
+        where('date', '<=', format(weekEnd, 'yyyy-MM-dd'))
+    );
   }, [firestore, weekStart]);
+
+  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
+  const { data: schedules, isLoading: schedulesLoading, error: schedulesError } = useCollection<Schedule>(schedulesQuery);
+  
+  const isLoading = employeesLoading || schedulesLoading;
+  const error = employeesError || schedulesError;
 
 
   const getScheduleForEmployeeAndDay = (employeeId: string, day: Date): Schedule | undefined => {

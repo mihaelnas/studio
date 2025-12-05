@@ -25,8 +25,9 @@ import { useToast } from "@/hooks/use-toast";
 import type { Schedule, Employee } from "@/lib/types";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
-import { useFirebase } from "@/firebase";
-import { collection, getDocs, FirestoreError } from "firebase/firestore";
+import { useFirebase, useMemoFirebase } from "@/firebase";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { collection, FirestoreError } from "firebase/firestore";
 
 interface TaskEditDialogProps {
   schedule: Schedule | undefined;
@@ -43,26 +44,8 @@ export function TaskEditDialog({ schedule, date, employeeId, onSave, children }:
   const { toast } = useToast();
   const { firestore } = useFirebase();
 
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [employeesLoading, setEmployeesLoading] = useState(true);
-
-  useEffect(() => {
-    if (!firestore || !isOpen) return;
-
-    const fetchEmployees = async () => {
-        setEmployeesLoading(true);
-        try {
-            const snapshot = await getDocs(collection(firestore, 'employees'));
-            const employeeData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-            setEmployees(employeeData);
-        } catch (error) {
-            console.error("Failed to fetch employees:", error);
-        } finally {
-            setEmployeesLoading(false);
-        }
-    };
-    fetchEmployees();
-  }, [firestore, isOpen]);
+  const employeesQuery = useMemoFirebase(() => firestore && isOpen ? collection(firestore, 'employees') : null, [firestore, isOpen]);
+  const { data: employees, isLoading: employeesLoading } = useCollection<Employee>(employeesQuery);
   
    useEffect(() => {
     if (schedule) {

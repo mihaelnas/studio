@@ -9,8 +9,9 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import { useFirebase } from "@/firebase";
-import { collection, getDocs, FirestoreError } from "firebase/firestore";
+import { useFirebase, useMemoFirebase } from "@/firebase";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { collection, FirestoreError } from "firebase/firestore";
 import type { Employee, ProcessedAttendance } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -26,48 +27,33 @@ const chartConfig = {
 
 export function HoursByDepartmentChart() {
   const { firestore } = useFirebase();
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<FirestoreError | null>(null);
 
-  useEffect(() => {
-    if (!firestore) return;
+  const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
+  const attendanceQuery = useMemoFirebase(() => firestore ? collection(firestore, 'processedAttendance') : null, [firestore]);
+  
+  const { data: employees, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
+  const { data: attendance, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
 
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            const employeesSnapshot = await getDocs(collection(firestore, 'employees'));
-            const attendanceSnapshot = await getDocs(collection(firestore, 'processedAttendance'));
+  const chartData = useMemo(() => {
+    if (!employees || !attendance) return [];
 
-            const employees = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-            const attendance = attendanceSnapshot.docs.map(doc => doc.data() as ProcessedAttendance);
-            
-            const employeeDeptMap = new Map(employees.map(e => [e.id, e.department]));
-            const deptHours: { [key: string]: number } = {};
+    const employeeDeptMap = new Map(employees.map(e => [e.id, e.department]));
+    const deptHours: { [key: string]: number } = {};
 
-            attendance.forEach(record => {
-                const dept = employeeDeptMap.get(record.employee_id) || 'Non assigné';
-                deptHours[dept] = (deptHours[dept] || 0) + record.total_worked_hours;
-            });
+    attendance.forEach(record => {
+        const dept = employeeDeptMap.get(record.employee_id) || 'Non assigné';
+        deptHours[dept] = (deptHours[dept] || 0) + record.total_worked_hours;
+    });
 
-            const data = Object.entries(deptHours).map(([department, hours]) => ({
-                department,
-                hours: Math.round(hours),
-            })).sort((a,b) => b.hours - a.hours);
+    return Object.entries(deptHours).map(([department, hours]) => ({
+        department,
+        hours: Math.round(hours),
+    })).sort((a,b) => b.hours - a.hours);
 
-            setChartData(data);
-            setError(null);
-        } catch (err) {
-            console.error(err);
-            setError(err as FirestoreError);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+  }, [employees, attendance]);
 
-    fetchData();
-  }, [firestore]);
-
+  const isLoading = employeesLoading || attendanceLoading;
+  const error = employeesError || attendanceError;
 
   if (isLoading) {
     return <Skeleton className="h-[250px] w-full" />;

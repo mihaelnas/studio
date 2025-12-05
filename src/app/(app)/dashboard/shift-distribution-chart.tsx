@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react";
@@ -10,7 +11,8 @@ import {
 } from "@/components/ui/chart"
 import type { Schedule } from '@/lib/types';
 import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, where, getDocs, FirestoreError } from 'firebase/firestore';
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { collection, query, where, FirestoreError } from 'firebase/firestore';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -26,38 +28,20 @@ const chartConfig = {
 
 export function ShiftDistributionChart() {
   const { firestore } = useFirebase();
-  const [data, setData] = useState<Schedule[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<FirestoreError | null>(null);
-
 
   const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
   const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
   
-  useEffect(() => {
-    if (!firestore) return;
-
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            const schedulesQuery = query(
-                collection(firestore, 'schedules'),
-                where('date', '>=', weekStart),
-                where('date', '<=', weekEnd)
-            );
-            const snapshot = await getDocs(schedulesQuery);
-            const schedulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Schedule));
-            setData(schedulesData);
-            setError(null);
-        } catch (err) {
-            console.error(err);
-            setError(err as FirestoreError);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    fetchData();
+  const schedulesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+        collection(firestore, 'schedules'),
+        where('date', '>=', weekStart),
+        where('date', '<=', weekEnd)
+    );
   }, [firestore, weekStart, weekEnd]);
+
+  const { data, isLoading, error } = useCollection<Schedule>(schedulesQuery);
   
   const total = data?.length || 0;
   

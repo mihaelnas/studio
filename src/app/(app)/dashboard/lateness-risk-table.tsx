@@ -16,7 +16,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useFirebase } from '@/firebase';
+import { useFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, getDocs, query as firestoreQuery, where } from 'firebase/firestore';
 import type { Employee, ProcessedAttendance } from '@/lib/types';
 import { predictLatenessRisk } from '@/ai/flows/predict-lateness-risk';
@@ -58,29 +59,19 @@ export function LatenessRiskTable() {
     
   const { firestore } = useFirebase();
   const [employees, setEmployees] = useState<EmployeeWithRisk[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
+  const { data: employeeData, isLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
+
   useEffect(() => {
-    if (!firestore) return;
-
-    const fetchEmployees = async () => {
-        setIsLoading(true);
-        try {
-            const employeesSnapshot = await getDocs(collection(firestore, 'employees'));
-            const employeeData = employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-            setEmployees(employeeData);
-            setError(null);
-        } catch (err) {
-            console.error(err);
-            setError("Impossible de charger les employés.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    fetchEmployees();
-  }, [firestore]);
+    if (employeeData) {
+        setEmployees(employeeData);
+    }
+    if (employeesError) {
+        setError("Impossible de charger les employés.");
+    }
+  }, [employeeData, employeesError]);
 
   const handlePredict = async (employeeId: string) => {
     if (!firestore) return;
