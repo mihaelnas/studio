@@ -27,6 +27,10 @@
           "type": "string",
           "description": "The email address of the employee.",
           "format": "email"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "URL for the employee's avatar image."
         }
       },
       "required": [
