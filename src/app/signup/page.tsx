@@ -17,12 +17,14 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { Stethoscope, Loader, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
 const formSchema = z.object({
+  name: z.string().min(2, { message: "Le nom doit comporter au moins 2 caractères." }),
   email: z.string().email({ message: "Veuillez saisir une adresse e-mail valide." }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères." }),
   confirmPassword: z.string(),
@@ -33,7 +35,7 @@ const formSchema = z.object({
 
 export default function SignupPage() {
   const { toast } = useToast();
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -42,6 +44,7 @@ export default function SignupPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -49,22 +52,41 @@ export default function SignupPage() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth) return;
+    if (!auth || !firestore) return;
     setIsLoading(true);
 
     try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // Create a corresponding employee document in Firestore
+      const employeeDocRef = doc(firestore, "employees", user.uid);
+      await setDoc(employeeDocRef, {
+        id: user.uid, // Using auth UID as employee doc ID
+        authUid: user.uid,
+        name: values.name,
+        email: values.email,
+        department: "Non assigné",
+        hourlyRate: 25000,
+      });
+
       toast({
         title: "Compte créé",
         description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté.",
       });
-      router.push("/dashboard");
+      router.push("/my-dashboard");
     } catch (error: any) {
       console.error("Signup Error: ", error);
+      let description = "Une erreur inconnue est survenue.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "Cette adresse e-mail est déjà utilisée. Veuillez en choisir une autre ou vous connecter.";
+      } else if (error.message) {
+        description = error.message;
+      }
       toast({
         variant: "destructive",
         title: "Échec de l'inscription",
-        description: error.message || "Une erreur est survenue.",
+        description: description,
       });
     } finally {
         setIsLoading(false);
@@ -83,6 +105,19 @@ export default function SignupPage() {
         </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nom complet</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Jean Dupont" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="email"

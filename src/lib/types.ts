@@ -3,6 +3,7 @@ import type { Timestamp } from 'firebase/firestore';
 
 export type Employee = {
   id: string;
+  authUid?: string; // Link to Firebase Auth user
   name: string;
   email: string;
   avatarUrl?: string;

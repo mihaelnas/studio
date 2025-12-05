@@ -11,6 +11,13 @@
           "type": "string",
           "description": "Unique identifier for the employee."
         },
+        "authUid": {
+            "type": "string",
+            "description": "The Firebase Authentication user ID linked to this employee."
+        },
+        "name": {
+          "type": "string"
+        },
         "firstName": {
           "type": "string",
           "description": "The first name of the employee."
@@ -27,13 +34,35 @@
           "type": "string",
           "description": "The email address of the employee.",
           "format": "email"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "The URL of the employee's avatar image.",
+          "format": "uri"
+        },
+        "department": {
+            "type": "string",
+            "description": "The department the employee belongs to."
+        },
+        "hourlyRate": {
+            "type": "number",
+            "description": "The employee's hourly rate for payroll calculation."
+        },
+        "latenessRisk": {
+            "type": "string",
+            "enum": ["Élevé", "Moyen", "Faible"],
+            "description": "The AI-predicted risk of the employee being late."
+        },
+        "historicalAttendanceData": {
+            "type": "string",
+            "description": "A summary or CSV of historical attendance data for AI analysis."
         }
       },
       "required": [
         "id",
-        "firstName",
-        "lastName",
-        "employeeId"
+        "authUid",
+        "name",
+        "email"
       ]
     },
     "AttendanceRecord": {
