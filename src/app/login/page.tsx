@@ -52,7 +52,8 @@ export default function LoginPage() {
         title: "Connexion réussie",
         description: "Bienvenue !",
       });
-      router.push("/dashboard");
+      // Redirect all users to their dashboard first. Admins can navigate elsewhere from there.
+      router.push("/my-dashboard"); 
     } catch (error: any) {
       let description = "Une erreur inconnue est survenue.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
