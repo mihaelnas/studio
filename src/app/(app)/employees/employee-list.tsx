@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from 'next/link';
@@ -14,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Pencil } from 'lucide-react';
 import { EmployeeEditDialog } from './[employeeId]/edit-dialog';
 import { Button } from '@/components/ui/button';
-import { AddEmployeeDialog } from './add-employee-dialog';
+import { DeleteEmployeeDialog } from './delete-employee-dialog';
 
 const RowSkeleton = () => (
   <TableRow>
@@ -30,7 +29,7 @@ const RowSkeleton = () => (
     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-    <TableCell><Skeleton className="h-10 w-24" /></TableCell>
+    <TableCell><Skeleton className="h-10 w-48" /></TableCell>
   </TableRow>
 );
 
@@ -83,13 +82,14 @@ export function EmployeeList() {
                 <TableCell className="text-muted-foreground">{employee.id}</TableCell>
                 <TableCell className="text-muted-foreground">{employee.email}</TableCell>
                 <TableCell>{employee.department}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right space-x-2">
                   <EmployeeEditDialog employee={employee}>
                     <Button variant="outline" size="sm">
                         <Pencil className="mr-2 h-4 w-4" />
                         Modifier
                     </Button>
                   </EmployeeEditDialog>
+                  <DeleteEmployeeDialog employee={employee} />
                 </TableCell>
               </TableRow>
             ))
