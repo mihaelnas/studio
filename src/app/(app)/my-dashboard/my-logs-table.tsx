@@ -60,7 +60,7 @@ export function MyLogsTable() {
     return query(
         collection(firestore, "attendanceLogs"), 
         where("personnelId", "==", user.uid),
-        orderBy("createdAt", "desc"), 
+        orderBy("dateTime", "desc"), 
         limit(50)
     );
   }, [firestore, user]);
