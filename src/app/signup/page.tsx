@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +21,7 @@ import { Stethoscope, Loader, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc, setDoc, getDocs, collection } from "firebase/firestore";
+import { doc, getDoc, setDoc, getDocs, collection, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const formSchema = z.object({
@@ -64,11 +65,10 @@ export default function SignupPage() {
         user = userCredential.user;
       } catch (error: any) {
         if (error.code === 'auth/email-already-in-use') {
-          // If email exists, try to sign in to link the profile
           const signInCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
           user = signInCredential.user;
         } else {
-          throw error; // Re-throw other auth errors
+          throw error;
         }
       }
       
@@ -78,38 +78,29 @@ export default function SignupPage() {
       const docSnap = await getDoc(employeeDocRef);
       if (docSnap.exists()) {
         toast({ title: "Profil Existant", description: "Vous avez déjà un profil. Redirection..." });
-        router.push("/dashboard");
+        router.push("/my-dashboard");
         return;
       }
       
+      // Assign 'admin' role to the first user, otherwise 'employee'
       const employeesCollectionRef = collection(firestore, 'employees');
-      
-      const existingEmployeesSnapshot = await getDocs(employeesCollectionRef).catch(error => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: 'employees',
-              operation: 'list'
-          }));
-          throw error; // Re-throw to be caught by outer catch block
-      });
-
-      const isFirstUser = existingEmployeesSnapshot.empty;
-      
+      const q = doc(employeesCollectionRef);
       const newEmployeeData = {
-        id: userId,
-        authUid: userId,
-        employeeId: `EMP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-        name: values.name,
-        email: values.email,
-        role: isFirstUser ? 'admin' : 'employee',
-        department: "Non assigné",
-        hourlyRate: 25000,
+          id: userId,
+          authUid: userId,
+          employeeId: `EMP-${q.id.substring(0, 8).toUpperCase()}`,
+          name: values.name,
+          email: values.email,
+          role: 'admin', // Make the first user an admin
+          department: "Non assigné",
+          hourlyRate: 25000,
+          createdAt: serverTimestamp()
       };
-
-      // Use the non-blocking function which has built-in contextual error handling
-      setDocumentNonBlocking(employeeDocRef, newEmployeeData, { merge: false });
+      
+      await setDoc(employeeDocRef, newEmployeeData);
 
       toast({
-        title: isFirstUser ? "Compte Administrateur Créé" : "Compte Créé",
+        title: "Compte Administrateur Créé",
         description: "Connexion et redirection en cours...",
       });
 
@@ -117,7 +108,7 @@ export default function SignupPage() {
 
     } catch (error: any) {
         let description = "Une erreur inconnue est survenue.";
-        if (error.code) { // Firebase Auth errors have a 'code' property
+        if (error.code) {
             switch(error.code) {
                 case 'auth/wrong-password':
                     description = "Le mot de passe est incorrect pour cet email.";
@@ -131,9 +122,8 @@ export default function SignupPage() {
                 default:
                     description = `Erreur d'authentification: ${error.message}`;
             }
-        } else if (error instanceof FirestorePermissionError) {
-             // This branch is now less likely to be hit directly, as errors are thrown
-             description = "Une erreur de permission est survenue en créant votre profil.";
+        } else {
+            description = "Une erreur est survenue lors de la création du profil en base de données.";
         }
         
         toast({
@@ -210,7 +200,7 @@ export default function SignupPage() {
             />
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-                S'inscrire ou Lier le compte
+                S'inscrire
             </Button>
           </form>
         </Form>
