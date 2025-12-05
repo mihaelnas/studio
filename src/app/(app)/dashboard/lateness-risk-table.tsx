@@ -1,14 +1,14 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader, MessageCircleQuestion, AlertTriangle, BrainCircuit, Info } from "lucide-react";
+import { Loader, MessageCircleQuestion, AlertTriangle, BrainCircuit } from "lucide-react";
 import { getLatenessExplanation } from "@/lib/actions";
 import {
   Tooltip,
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useFirebase, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, getDocs, query as firestoreQuery, where } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import type { Employee, ProcessedAttendance } from '@/lib/types';
 import { predictLatenessRisk } from '@/ai/flows/predict-lateness-risk';
 import type { PredictLatenessRiskOutput } from '@/ai/flows/predict-lateness-risk';
@@ -45,7 +45,6 @@ const RowSkeleton = () => (
     </TableRow>
 );
 
-
 const getRiskBadgeVariant = (risk?: 'Élevé' | 'Moyen' | 'Faible') => {
     switch (risk) {
         case 'Élevé': return 'destructive';
@@ -59,36 +58,42 @@ export function LatenessRiskTable() {
     
   const { firestore } = useFirebase();
   const [employees, setEmployees] = useState<EmployeeWithRisk[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
+  
   const employeesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
-  const { data: employeeData, isLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
+  const attendanceQuery = useMemoFirebase(() => firestore ? collection(firestore, 'processedAttendance') : null, [firestore]);
+  
+  const { data: employeeData, isLoading: employeesLoading, error: employeesError } = useCollection<Employee>(employeesQuery);
+  const { data: attendanceData, isLoading: attendanceLoading, error: attendanceError } = useCollection<ProcessedAttendance>(attendanceQuery);
+
+  const attendanceByEmployee = useMemo(() => {
+    const map = new Map<string, ProcessedAttendance[]>();
+    if (!attendanceData) return map;
+    attendanceData.forEach(record => {
+      const records = map.get(record.employee_id) || [];
+      records.push(record);
+      map.set(record.employee_id, records);
+    });
+    return map;
+  }, [attendanceData]);
 
   useEffect(() => {
     if (employeeData) {
         setEmployees(employeeData);
     }
-    if (employeesError) {
-        setError("Impossible de charger les employés.");
-    }
-  }, [employeeData, employeesError]);
+  }, [employeeData]);
 
   const handlePredict = async (employeeId: string) => {
-    if (!firestore) return;
     setEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, isPredicting: true } : e));
     
     try {
-        const attendanceQuery = firestoreQuery(collection(firestore, "processedAttendance"), where("employee_id", "==", employeeId));
-        const snapshot = await getDocs(attendanceQuery);
-        const attendanceHistory = snapshot.docs.map(doc => doc.data() as ProcessedAttendance);
-
-        const csvData = "date,total_late_minutes\n" + attendanceHistory.map(r => `${r.date},${r.total_late_minutes}`).join("\n");
+        const attendanceHistory = attendanceByEmployee.get(employeeId) || [];
         
         if (attendanceHistory.length === 0) {
             setEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, risk: { riskLevel: 'Faible', reason: 'Aucune donnée de présence.' }, isPredicting: false } : e));
             return;
         }
 
+        const csvData = "date,total_late_minutes\n" + attendanceHistory.map(r => `${r.date},${r.total_late_minutes}`).join("\n");
         const prediction = await predictLatenessRisk({ historicalAttendanceData: csvData });
         
         setEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, risk: prediction, isPredicting: false } : e));
@@ -110,6 +115,9 @@ export function LatenessRiskTable() {
      }
   }
     
+  const isLoading = employeesLoading || attendanceLoading;
+  const error = employeesError || attendanceError;
+    
   if (isLoading) {
       return (
         <div className="rounded-md border">
@@ -128,7 +136,7 @@ export function LatenessRiskTable() {
         <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Erreur</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{error.message}</AlertDescription>
         </Alert>
       )
   }
@@ -197,3 +205,5 @@ export function LatenessRiskTable() {
     </TooltipProvider>
   );
 }
+
+    

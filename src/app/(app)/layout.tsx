@@ -62,16 +62,24 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
           <SidebarHeader className="p-2">
             <div className="flex items-center gap-2.5 px-2">
                 <svg
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="h-7 w-7 text-primary"
-                  >
+                    viewBox="0 0 100 100"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-8 w-8 shrink-0"
+                >
                     <path
-                      fillRule="evenodd"
-                      d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10a9.96 9.96 0 006.33-2.134c-1.393-.56-2.505-1.553-3.08-2.735a7.485 7.485 0 01-6.497-6.497C7.553 9.04 6.56 7.928 6 6.535A9.96 9.96 0 002 12zm10 2.236a9.993 9.993 0 00-11.833 9.61c.143.91.455 1.766.91 2.531 1.488-1.076 2.51-2.748 2.82-4.592A5.5 5.5 0 0017.5 8.075c1.844.31 3.516 1.332 4.592 2.82.765-.455 1.62-.767 2.531-.91A9.993 9.993 0 0012 4.236z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                        d="M50 25C50 22.2386 52.2386 20 55 20H75C77.7614 20 80 22.2386 80 25V39C80 40.6569 78.6569 42 77 42H50V25Z"
+                        className="fill-primary"
+                    ></path>
+                    <path
+                        d="M32 60.5C32 55.8056 35.8056 52 40.5 52H50V78C50 80.7614 47.7614 83 45 83H36C33.7909 83 32 81.2091 32 79V60.5Z"
+                        className="fill-primary opacity-70"
+                    ></path>
+                    <path
+                        d="M50 52H59.5C64.1944 52 68 55.8056 68 60.5V79C68 81.2091 66.2091 83 64 83H50V52Z"
+                        className="fill-primary"
+                    ></path>
+                </svg>
               <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">TimeSense HR</h1>
             </div>
           </SidebarHeader>
@@ -108,3 +116,5 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </FirebaseClientProvider>
   );
 }
+
+    

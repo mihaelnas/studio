@@ -3,19 +3,27 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAppAdmin(userId) {
+      // In a real app, this would check a 'roles' subcollection or custom claims.
+      // For now, we can hardcode admin UIDs or check a field on the user document.
+      // Let's assume for now, nobody is an admin to lock it down.
+      return false;
+    }
+
     match /attendanceLogs/{logId} {
       allow read, write: if request.auth != null;
     }
 
     match /employees/{userId} {
       allow list, get: if request.auth != null;
-      allow write: if request.auth.uid == userId;
-      allow delete: if request.auth != null;
+      // Only the user themselves or an admin can update
+      allow update: if request.auth.uid == userId || isAppAdmin(request.auth.uid);
+      // Only an admin can create or delete
+      allow create, delete: if isAppAdmin(request.auth.uid);
     }
 
      match /schedules/{scheduleId} {
-      allow list, get: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
     
     match /manualCorrections/{correctionId} {
@@ -27,8 +35,10 @@ service cloud.firestore {
     }
 
     match /payslips/{payslipId} {
+        // Users should only be able to read their own payslips
         allow read: if request.auth != null && request.auth.uid == resource.data.employeeId;
-        allow write: if request.auth != null;
+        // Writing payslips should be a server/admin process
+        allow write: if isAppAdmin(request.auth.uid);
     }
 
     match /shifts/{shiftId} {
@@ -36,3 +46,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
