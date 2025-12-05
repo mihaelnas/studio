@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    // This allows all cross-origin requests in development.
+    // In a production environment, you should be more specific.
+    allowedDevOrigins: ['**'],
+  },
   images: {
     remotePatterns: [
       {
