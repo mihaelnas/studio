@@ -52,15 +52,14 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Fetch user's profile from Firestore to check their role
       const employeeDocRef = doc(firestore, 'employees', user.uid);
       const employeeDoc = await getDoc(employeeDocRef);
 
-      let redirectPath = '/my-dashboard'; // Default path for employees
+      let redirectPath = '/my-dashboard'; 
       if (employeeDoc.exists()) {
         const employeeData = employeeDoc.data() as Employee;
         if (employeeData.role === 'admin') {
-          redirectPath = '/dashboard'; // Path for admins
+          redirectPath = '/dashboard'; 
         }
       }
       
@@ -94,7 +93,7 @@ export default function LoginPage() {
             <div className="mb-4 inline-flex items-center justify-center rounded-lg bg-primary p-3 text-primary-foreground">
                 <Stethoscope className="h-8 w-8" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">Miaraka Santé RH</h1>
+            <h1 className="text-3xl font-bold tracking-tight">TimeSense HR</h1>
             <p className="mt-2 text-muted-foreground">Connectez-vous à votre compte</p>
         </div>
         <Form {...form}>

@@ -7,10 +7,6 @@ import Link from "next/link";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarSeparator } from "@/components/ui/sidebar";
 import { LayoutDashboard, Users, CalendarDays, Upload, History, Cog, BarChart, BrainCircuit, Wrench, FileSpreadsheet, UserSquare } from "lucide-react";
 
-// This file is being renamed to admin-sidebar-nav.tsx
-// But for the purpose of this change, we are just renaming the component
-// and will handle the file rename in a subsequent step if needed.
-
 const adminNavGroups = [
   {
     title: "Mon Espace",

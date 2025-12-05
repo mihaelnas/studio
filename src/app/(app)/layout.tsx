@@ -7,17 +7,28 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
 import { AppHeader } from "@/components/layout/header";
-import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { AdminSidebarNav } from "@/components/layout/admin-sidebar-nav";
+import { EmployeeSidebarNav } from "@/components/layout/employee-sidebar-nav";
 import { LogOut, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FirebaseClientProvider, useFirebase } from "@/firebase";
+import { FirebaseClientProvider, useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
+import { collection, query, where } from 'firebase/firestore';
+import type { Employee } from "@/lib/types";
 
 function AppLayoutContent({ children }: { children: ReactNode }) {
-  const { auth, user, isUserLoading } = useFirebase();
+  const { auth, user, isUserLoading, firestore } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
+
+  const employeeQuery = useMemoFirebase(() => {
+      if (!firestore || !user) return null;
+      return query(collection(firestore, 'employees'), where('authUid', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: employeeData, isLoading: isEmployeeLoading } = useCollection<Employee>(employeeQuery);
+  const employee = employeeData?.[0];
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -45,7 +56,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   };
 
 
-  if (isUserLoading || !user) {
+  if (isUserLoading || isEmployeeLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader className="h-8 w-8 animate-spin text-primary" />
@@ -81,7 +92,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             </Link>
         </SidebarHeader>
         <SidebarContent className="p-2">
-          <SidebarNav />
+          {employee?.role === 'admin' ? <AdminSidebarNav /> : <EmployeeSidebarNav />}
         </SidebarContent>
         <SidebarFooter className="p-2">
             <Button onClick={handleSignOut} variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" tooltip={{children: 'Se Déconnecter', side: 'right', align: 'center'}}>
