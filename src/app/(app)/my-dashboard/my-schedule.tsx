@@ -28,8 +28,11 @@ function ScheduleItemSkeleton() {
 export function MySchedule() {
   const { firestore, user } = useFirebase();
 
-  const today = startOfToday();
-  const nextWeek = addDays(today, 7);
+  const { today, nextWeek } = useMemo(() => {
+    const today = startOfToday();
+    const nextWeek = addDays(today, 7);
+    return { today, nextWeek };
+  }, []);
 
   const scheduleQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
