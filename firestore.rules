@@ -35,8 +35,15 @@ service cloud.firestore {
       // Only admins can list all employees.
       allow list: if isAppAdmin();
       
-      // Allow a user to create their own profile document, or an admin to create any.
-      allow write: if isAppAdmin() || isOwner(employeeId);
+      // An authenticated user can create their own profile document.
+      // Or an admin can create any new user profile.
+      allow create: if isOwner(employeeId) || isAppAdmin();
+
+      // Only admins can update employee profiles.
+      allow update: if isAppAdmin();
+      
+      // Only admins can delete.
+      allow delete: if isAppAdmin();
     }
     
     // --- Subcollection: employee schedules ---
@@ -68,25 +75,4 @@ service cloud.firestore {
     // --- Collection: processedAttendance ---
     match /processedAttendance/{recordId} {
         // Admins can list and read any record.
-        allow list, get: if isAppAdmin();
-        // An employee can read their own processed attendance (if recordId is their userId).
-        allow get: if recordId.startsWith(request.auth.uid);
-        // Writing should be restricted to the backend processing function, emulated here by admin-only.
-        allow write: if isAppAdmin();
-    }
-
-    // --- Collection: payslips ---
-    match /payslips/{payslipId} {
-        // An employee can only read their own payslip.
-        allow read: if isAppAdmin() || get(/databases/$(database)/documents/employees/$(resource.data.employeeId)).data.authUid == request.auth.uid;
-        // Writing payslips should be an admin/server process.
-        allow write: if isAppAdmin();
-    }
-
-    // --- Collection: shifts ---
-    match /shifts/{shiftId} {
-      // All authenticated users can read shift information.
-      allow read: if request.auth != null;
-    }
-  }
-}
+        allow list, get: if isAppA

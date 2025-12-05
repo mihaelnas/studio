@@ -36,9 +36,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { setDoc, doc, collection } from 'firebase/firestore';
+import { setDoc, doc } from 'firebase/firestore';
 import { Loader } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const departments = [
   "Non assigné",
@@ -94,7 +95,8 @@ export function AddEmployeeDialog() {
       // Use the user's UID as the document ID for the employee document for easy mapping.
       const newEmployeeDocRef = doc(firestore, 'employees', user.uid);
       
-      await setDoc(newEmployeeDocRef, {
+      // Use the non-blocking update to handle potential permission errors gracefully
+      setDocumentNonBlocking(newEmployeeDocRef, {
           id: user.uid, // Store the auth UID in the document as well
           authUid: user.uid,
           employeeId: values.employeeId, // The ID from the biometric device
@@ -103,7 +105,7 @@ export function AddEmployeeDialog() {
           department: values.department,
           hourlyRate: values.hourlyRate,
           role: values.isAdmin ? 'admin' : 'employee',
-      });
+      }, {});
 
       toast({
         title: "Employé Ajouté",
