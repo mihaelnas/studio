@@ -23,13 +23,9 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-     match /schedules/{scheduleId} {
-      // Permet la lecture (get) et l'écriture (create, update, delete) de documents individuels.
+    // Permet de lister la collection et de lire/écrire des documents individuels
+    match /schedules/{scheduleId} {
       allow read, write: if request.auth != null;
-    }
-    match /schedules {
-        // Permet de lister (requêter) la collection entière. Nécessaire pour le planificateur.
-        allow list: if request.auth != null;
     }
     
     match /manualCorrections/{correctionId} {
