@@ -1,28 +1,19 @@
+
 'use server';
 
 /**
  * @fileOverview Suggerère une assignation de tâche basée sur la performance récente d'un employé.
  * 
  * - suggestTaskForEmployee - Une fonction qui analyse les données de performance et suggère un type de tâche.
- * - SuggestTaskInput - Le type d'entrée pour la fonction.
- * - SuggestTaskOutput - Le type de retour pour la fonction.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
-
-export const SuggestTaskInputSchema = z.object({
-    employeeName: z.string().describe("Le nom de l'employé."),
-    avgWorkedHours: z.number().describe("La moyenne d'heures travaillées par jour sur la période récente."),
-    totalLateMinutes: z.number().describe("Le total des minutes de retard sur la période récente."),
-    totalOvertimeMinutes: z.number().describe("Le total des minutes d'heures supplémentaires sur la période récente."),
-});
-export type SuggestTaskInput = z.infer<typeof SuggestTaskInputSchema>;
-
-export const SuggestTaskOutputSchema = z.object({
-    recommendation: z.string().describe("Une recommandation concise (une phrase) sur le type de tâche à assigner à l'employé."),
-});
-export type SuggestTaskOutput = z.infer<typeof SuggestTaskOutputSchema>;
+import { 
+    SuggestTaskInputSchema, 
+    SuggestTaskOutputSchema,
+    type SuggestTaskInput,
+    type SuggestTaskOutput
+} from './suggest-task-types';
 
 
 export async function suggestTaskForEmployee(input: SuggestTaskInput): Promise<SuggestTaskOutput> {
