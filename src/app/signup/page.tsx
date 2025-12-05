@@ -98,7 +98,7 @@ export default function SignupPage() {
         title: "Compte créé",
         description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté.",
       });
-      router.push("/my-dashboard");
+      router.push("/dashboard");
     } catch (error: any) {
       console.error("Signup Error: ", error);
       let description = "Une erreur inconnue est survenue.";

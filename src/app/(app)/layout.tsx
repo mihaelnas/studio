@@ -17,7 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 function AppLayoutContent({ children }: { children: ReactNode }) {
   const { auth, user, isUserLoading } = useFirebase();
   const router = useRouter();
-  const pathname = usePathname();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,13 +53,10 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     );
   }
   
-  const isMyDashboard = pathname === '/my-dashboard';
-
   return (
     <SidebarProvider>
-      {!isMyDashboard && (
-        <Sidebar>
-          <SidebarHeader className="p-2">
+      <Sidebar>
+        <SidebarHeader className="p-2">
             <Link href="/dashboard" className="flex items-center gap-2.5 px-2">
                 <svg
                     viewBox="0 0 100 100"
@@ -83,20 +79,19 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 </svg>
               <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">TimeSense HR</h1>
             </Link>
-          </SidebarHeader>
-          <SidebarContent className="p-2">
-            <SidebarNav />
-          </SidebarContent>
-          <SidebarFooter className="p-2">
-              <Button onClick={handleSignOut} variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" tooltip={{children: 'Se Déconnecter', side: 'right', align: 'center'}}>
-                  
-                      <LogOut className="mr-2 h-5 w-5 shrink-0" />
-                      <span className="group-data-[collapsible=icon]:hidden">Se Déconnecter</span>
-                  
-              </Button>
-          </SidebarFooter>
-        </Sidebar>
-      )}
+        </SidebarHeader>
+        <SidebarContent className="p-2">
+          <SidebarNav />
+        </SidebarContent>
+        <SidebarFooter className="p-2">
+            <Button onClick={handleSignOut} variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" tooltip={{children: 'Se Déconnecter', side: 'right', align: 'center'}}>
+                
+                    <LogOut className="mr-2 h-5 w-5 shrink-0" />
+                    <span className="group-data-[collapsible=icon]:hidden">Se Déconnecter</span>
+                
+            </Button>
+        </SidebarFooter>
+      </Sidebar>
       <SidebarInset>
         <AppHeader />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -117,5 +112,3 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </FirebaseClientProvider>
   );
 }
-
-    
